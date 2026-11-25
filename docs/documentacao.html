@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Atividade 03 - RA Markerless</title>
+<style>
+@page { size: A4; margin: 2cm; }
+body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.45; color: #111; }
+h1 { font-size: 18pt; margin: 0 0 4px; } h2 { font-size: 14pt; margin-top: 22px; border-bottom: 1px solid #999; }
+code, pre { font-family: Consolas, monospace; font-size: 9.5pt; }
+pre { background: #f3f3f3; padding: 8px; border-left: 3px solid #888; white-space: pre-wrap; }
+table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #aaa; padding: 4px 6px; text-align: left; vertical-align: top; }
+.capa { text-align: center; margin-top: 40px; } img { max-width: 100%; border: 1px solid #ccc; }
+</style></head><body>
+
+<div class="capa">
+<p>Centro Universitário Anchieta — Ciência da Computação</p>
+<h1>Atividade 03 — Realidade Aumentada Markerless</h1>
+<p>Localização dos prédios do campus Prof. Pedro C. Fornari</p>
+<p>Prof. Clayton Valdo</p>
+<table style="width:70%;margin:auto"><tr><th>Integrante</th><th>RA</th></tr>
+<tr><td>Mateus Tavares Ruiz</td><td>2300567c</td></tr></table>
+<p>Projeto: <b>https://github.com/mateustavaresruiz/atividade03-ra-campus</b><br>
+App: <b>https://mateustavaresruiz.github.io/atividade03-ra-campus/</b></p>
+<p>Novembro de 2026</p>
+</div>
+
+<h2>1. Objetivo</h2>
+<p>App de Realidade Aumentada <b>markerless</b> (sem marcador impresso): pela câmera do celular, mostra
+um marcador 3D (pino vermelho) sobre cada prédio do campus e o nome do prédio logo acima. A posição
+de cada prédio vem do <b>GPS</b> e a direção para onde o celular aponta vem da <b>bússola e do giroscópio</b>.
+É a chamada RA baseada em localização (<i>location-based AR</i>).</p>
+
+<h2>2. Tecnologias</h2>
+<table>
+<tr><th>Tecnologia</th><th>Papel no projeto</th></tr>
+<tr><td>HTML + JavaScript</td><td>App web: roda no navegador do celular, sem instalar nada</td></tr>
+<tr><td>A-Frame 1.3.0</td><td>Framework de cenas 3D na web (baseado em three.js). A cena é escrita com tags HTML (<code>&lt;a-scene&gt;</code>, <code>&lt;a-camera&gt;</code>, <code>&lt;a-entity&gt;</code>)</td></tr>
+<tr><td>AR.js 3.4.5</td><td>Biblioteca de RA. Usamos o módulo de localização: <code>gps-new-camera</code> (câmera guiada pelo GPS e pelos sensores) e <code>gps-new-entity-place</code> (objeto fixado numa latitude/longitude)</td></tr>
+<tr><td>three.js FBXLoader</td><td>Carrega o modelo <code>map_pin.fbx</code> fornecido na atividade</td></tr>
+<tr><td>Geolocation API</td><td>GPS do navegador (precisão e calibração)</td></tr>
+<tr><td>OpenStreetMap</td><td>Fonte das coordenadas iniciais dos prédios</td></tr>
+<tr><td>GitHub + GitHub Pages</td><td>Código na nuvem e hospedagem HTTPS (câmera e GPS exigem HTTPS)</td></tr>
+</table>
+
+<h2>3. Estrutura de arquivos</h2>
+<pre>atividade03-ra-campus/
+├── index.html         página do app: cena A-Frame/AR.js e painel
+├── componentes.js     componentes A-Frame criados para o projeto
+├── pontos.js          lista dos prédios (nome, latitude, longitude) e distância
+├── calibrar.html      página para ajustar as coordenadas no campus
+├── modelos/
+│   └── map_pin.fbx    marcador 3D fornecido pelo professor
+└── README.md          instruções</pre>
+
+<h2>4. Como funciona (fluxo)</h2>
+<pre>abre o link → permite câmera, GPS e sensores
+→ AR.js liga a câmera (vídeo ao fundo) e o GPS
+→ 1ª posição do GPS: o app cria um ponto 3D para cada prédio
+→ cada ponto = pino FBX + rótulo com o nome, na latitude/longitude do prédio
+→ a bússola/giroscópio giram a câmera virtual junto com o celular
+→ a cada nova posição: recalcula distâncias, escala e o painel</pre>
+
+<h2>5. index.html</h2>
+<ul>
+<li>Carrega as bibliotecas (A-Frame, AR.js, FBXLoader) por CDN e os arquivos do projeto.</li>
+<li><code>&lt;a-scene arjs="sourceType: webcam; videoTexture: false"&gt;</code>: o AR.js mostra a câmera traseira atrás da cena 3D (o canvas é transparente, <code>alpha: true</code>). Nos testes, <code>videoTexture: true</code> desenhava o vídeo por cima dos objetos, por isso foi desligado.</li>
+<li><code>&lt;a-camera gps-new-camera="gpsMinDistance: 3"&gt;</code>: câmera virtual que se move com o GPS (só atualiza se andar 3 m ou mais, para evitar tremedeira) e gira com os sensores do celular.</li>
+<li>Componente <code>gerenciador-pontos</code> na cena, painel no topo (precisão, prédio mais perto, distâncias) e atalhos para os modos.</li>
+</ul>
+
+<h2>6. pontos.js</h2>
+<ul>
+<li><code>PONTOS</code>: lista dos 7 pontos — Prédios 1 a 4, Biblioteca, Prédio Administrativo e Anfiteatro — com o centro de cada prédio no OpenStreetMap.</li>
+<li><code>carregarPontos()</code>: usa as coordenadas calibradas no celular (<code>localStorage</code>), se existirem; senão, as do arquivo.</li>
+<li><code>distanciaMetros()</code>: fórmula de Haversine, distância em metros entre duas coordenadas.</li>
+</ul>
+<table><tr><th>Ponto</th><th>Latitude</th><th>Longitude</th></tr>
+<tr><td>Prédio 1</td><td>-23.214412</td><td>-46.891534</td></tr>
+<tr><td>Prédio 2</td><td>-23.212863</td><td>-46.892935</td></tr>
+<tr><td>Prédio 3</td><td>-23.213953</td><td>-46.892904</td></tr>
+<tr><td>Prédio 4</td><td>-23.214494</td><td>-46.893442</td></tr>
+<tr><td>Biblioteca</td><td>-23.213193</td><td>-46.892648</td></tr>
+<tr><td>Prédio Administrativo</td><td>-23.213798</td><td>-46.892063</td></tr>
+<tr><td>Anfiteatro</td><td>-23.215327</td><td>-46.891176</td></tr></table>
+<p>Distância mínima entre pontos: todos os pares ficam a mais de 50 m, exceto Prédio 2 e Biblioteca
+(47 m, prédios vizinhos). A página de calibração avisa quando algum par fica abaixo de 50 m.</p>
+
+<h2>7. componentes.js</h2>
+<h3>marcador-pino</h3>
+<p>Carrega o <code>map_pin.fbx</code> uma única vez com o <code>THREE.FBXLoader</code>, normaliza o tamanho
+(altura 1, base no chão), aplica material vermelho e coloca uma cópia em cada ponto. O pino gira
+devagar para chamar atenção. Se o FBX não carregar, usa um cone vermelho no lugar.</p>
+<h3>rotulo</h3>
+<p>Desenha o nome do prédio num <code>canvas</code> (para aceitar acentos, como em "Prédio") e usa como
+textura de um plano. A cada quadro o plano gira para ficar de frente para a câmera (<i>billboard</i>).</p>
+<h3>gerenciador-pontos</h3>
+<ul>
+<li>Escuta o evento <code>gps-camera-update-position</code> do AR.js.</li>
+<li>Na primeira posição, cria para cada prédio uma entidade com <code>gps-new-entity-place</code> (latitude/longitude), o pino e o rótulo logo acima. Os rótulos têm alturas alternadas para que nomes de prédios na mesma direção não se cubram.</li>
+<li>A cada atualização, calcula a distância até cada prédio, ajusta a escala (cresce com a raiz da distância: visível de longe, mas os distantes aparecem menores) e atualiza o painel.</li>
+<li><b>Modo teste</b> (<code>?teste=1</code>): espalha os pontos em círculo a 60–120 m de onde a pessoa está, para testar fora do campus.</li>
+<li><b>Modo simulado</b> (<code>?simular=1</code>): usa a simulação de GPS do AR.js e coloca o usuário no campo de futebol do campus, olhando para os prédios.</li>
+</ul>
+
+<h2>8. calibrar.html</h2>
+<p>Mostra a posição atual e a precisão do GPS. Em frente a cada prédio, o botão "Salvar aqui" grava
+a coordenada no celular; o app passa a usá-la. Também mostra a distância até cada ponto, avisa pares
+com menos de 50 m e exibe o código de <code>PONTOS</code> pronto para copiar para o <code>pontos.js</code>.</p>
+
+<h2>9. Testes</h2>
+<table>
+<tr><th>Teste</th><th>Resultado</th></tr>
+<tr><td>Modelo FBX e rótulos numa cena 3D simples</td><td>Pino vermelho renderizado; acentos corretos</td></tr>
+<tr><td>App no computador, modo simulado (câmera falsa do navegador)</td><td>7 pontos criados nas posições corretas, pinos e nomes sobre o vídeo, painel com distâncias</td></tr>
+<tr><td>Versão publicada no GitHub Pages</td><td>Página e modelo acessíveis por HTTPS</td></tr>
+</table>
+<p><img src="print_app_simulado.png"><br><small>App no modo simulado (computador): o fundo verde é a câmera falsa do navegador de teste; no celular aparece a imagem real.</small></p>
+<!-- TESTE-CAMPUS -->
+
+<h2>10. Como usar</h2>
+<ol>
+<li>No celular (Chrome no Android, Safari no iPhone), abrir o link do app.</li>
+<li>Permitir câmera, localização e sensores de movimento.</li>
+<li>Esperar a precisão do GPS ficar boa (painel no topo) e apontar para os prédios.</li>
+</ol>
+
+<h2>11. Limitações</h2>
+<ul>
+<li>O GPS do celular erra de 5 a 20 m e a bússola pode desviar perto de estruturas metálicas; por isso os pontos devem estar a pelo menos 50 m entre si.</li>
+<li>Prédios a mais de algumas centenas de metros aparecem pequenos.</li>
+<li>As coordenadas iniciais vêm do mapa; a calibração no local melhora a precisão.</li>
+</ul>
+
+<h2>12. Créditos</h2>
+<p>Modelo <code>map_pin.fbx</code>: material da atividade. Coordenadas: © colaboradores do OpenStreetMap (ODbL).</p>
+</body></html>
