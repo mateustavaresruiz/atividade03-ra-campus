@@ -105,25 +105,29 @@ AFRAME.registerComponent("gerenciador-pontos", {
         { simulateLatitude: -23.21700, simulateLongitude: -46.89220 }));
       this.precisao = 0;
     } else if (navigator.geolocation) {
-      // O evento do AR.js não traz a precisão; lemos à parte para mostrar no painel
-      navigator.geolocation.watchPosition((p) => {
+      // Nós mesmos lemos o GPS a cada 3 s e entregamos a posição ao AR.js.
+      // Motivos: em alguns celulares o watchPosition (usado pelo AR.js) nunca responde,
+      // e o AR.js descarta leituras com precisão pior que 100 m (comum em casa).
+      const aplicar = (p) => {
         this.precisao = p.coords.accuracy;
-        if (this.criados) return;
-        if (MODO_TESTE) {
-          // O AR.js ignora GPS com precisão pior que 100 m (comum dentro de casa).
-          // No modo teste, usamos a posição que tivermos, seja qual for a precisão.
-          camera.setAttribute("gps-new-camera",
-            { simulateLatitude: p.coords.latitude, simulateLongitude: p.coords.longitude });
-        } else {
-          this.status.textContent =
-            `Aguardando GPS mais preciso... agora ±${Math.round(p.coords.accuracy)} m (precisa de até 100 m; vá para um lugar aberto)`;
-        }
-      }, (erro) => {
-        const motivos = { 1: "permissão de localização negada — libere nas configurações do navegador",
+        camera.setAttribute("gps-new-camera",
+          { simulateLatitude: p.coords.latitude, simulateLongitude: p.coords.longitude });
+      };
+      const erro = (e) => {
+        const motivos = { 1: "permissão de localização negada — libere no cadeado ao lado do endereço",
                           2: "localização indisponível — ligue o GPS/localização do celular",
                           3: "o GPS demorou para responder — tente em lugar aberto" };
-        this.status.textContent = "Erro de GPS: " + (motivos[erro.code] || erro.message);
-      }, { enableHighAccuracy: true, timeout: 30000 });
+        if (!this.criados) this.status.textContent = "Erro de GPS: " + (motivos[e.code] || e.message);
+      };
+      const ler = () => navigator.geolocation.getCurrentPosition(aplicar, erro,
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+
+      // Começa com a posição que o botão INICIAR já obteve (se houver)
+      this.el.addEventListener("loaded", () => {
+        if (window.posicaoInicial) aplicar(window.posicaoInicial);
+        ler();
+        setInterval(ler, 3000);
+      });
     } else {
       this.status.textContent = "Este navegador não tem GPS (geolocalização).";
     }
