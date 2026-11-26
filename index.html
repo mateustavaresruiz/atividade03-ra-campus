@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>RA Campus Anchieta</title>
-  <script src="pontos.js?v=16"></script>
+  <script src="pontos.js?v=17"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
@@ -34,9 +34,8 @@
     }
     .seta.esq { left: 6px; } .seta.dir { right: 6px; }
 
-    #manual { position: fixed; left: 8px; right: 8px; bottom: 70px; z-index: 3000; display: none;
-              background: rgba(0, 40, 90, .92); color: #fff; padding: 8px; border-radius: 10px; font-size: 13px; }
-    #manual select { width: 100%; font-size: 15px; padding: 6px; margin-top: 4px; }
+    #inicio label { width: 100%; max-width: 320px; text-align: left; font-size: 15px; }
+    #inicio select { width: 100%; font-size: 16px; padding: 10px; margin-top: 6px; border-radius: 8px; }
     #inicio {
       position: fixed; inset: 0; z-index: 5000; background: #0b2a4a; color: #fff;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -52,8 +51,6 @@
 <body>
   <video id="video" autoplay playsinline muted></video>
   <div id="camada"></div>
-  <div id="manual">GPS fraco aqui. Escolha onde você está (usado até o GPS melhorar):
-    <select id="ondeEstou"><option value="">— escolher —</option></select></div>
 
   <div id="painel">
     <div id="status">Aguardando GPS...</div>
@@ -65,6 +62,8 @@
     <h1>RA Campus Anchieta</h1>
     <p>Segure o celular <b>em pé</b> e gire devagar.<br>
        O app vai pedir <b>câmera</b>, <b>localização</b> e <b>movimento</b>: toque em <b>Permitir</b>.</p>
+    <label>Onde você está?
+      <select id="ondeEstou"><option value="">GPS do celular (automático)</option></select></label>
     <button id="btnIniciar">INICIAR</button>
     <div class="msg" id="msgInicio"></div>
   </div>
@@ -153,7 +152,7 @@ function ligarBussola() {
 
 // ---------------------------------------------------------------- posição manual
 // Dentro de prédio o GPS do celular pode errar centenas de metros. Nesse caso a pessoa
-// escolhe onde está; assim que o GPS ficar bom (±30 m ou menos) ele volta a ser usado.
+// escolhe na tela inicial onde está, e essa posição é usada no lugar do GPS.
 let manual = null;
 const LUGARES = [
   { nome: "Pátio entre o Administrativo e o Prédio 3", lat: -23.21376, lon: -46.89251 },
@@ -162,17 +161,10 @@ const LUGARES = [
 ];
 const ondeEstou = document.getElementById("ondeEstou");
 LUGARES.forEach((l, i) => ondeEstou.add(new Option(l.nome, i)));
-ondeEstou.onchange = () => {
-  if (ondeEstou.value === "") return;
-  manual = LUGARES[+ondeEstou.value];
-  posicao = { lat: manual.lat, lon: manual.lon, prec: null, manual: true };
-};
 
 // ---------------------------------------------------------------- GPS
 function ligarGPS(primeira) {
   const usar = (p) => {
-    if (manual && p.coords.accuracy > 30) return;   // GPS ainda ruim: mantém o lugar escolhido
-    manual = null;
     posicao = { lat: p.coords.latitude, lon: p.coords.longitude, prec: p.coords.accuracy };
   };
   if (primeira) usar(primeira);
@@ -237,7 +229,7 @@ function desenhar() {
       const n = lado === "esq" ? esq++ : dir++;
       it.seta.className = "seta " + lado;
       it.seta.style.display = "block";
-      it.seta.style.top = ""; it.seta.style.bottom = ((posicao.prec > 100 || manual ? 150 : 20) + n * 38) + "px";
+      it.seta.style.top = ""; it.seta.style.bottom = (20 + n * 38) + "px";
       it.seta.textContent = lado === "esq"
         ? `◀ ${it.p.nome} · ${textoDistancia(it.d)}` : `${it.p.nome} · ${textoDistancia(it.d)} ▶`;
     }
@@ -248,39 +240,43 @@ function desenhar() {
   // Tamanho: grande perto (≈100 m), pequeno longe (vários km).
   const degraus = [];   // borda direita ocupada em cada degrau
   visiveis.sort((a, b) => a.x - b.x).forEach((it) => {
-    const escala = Math.max(0.7, Math.min(1.2, 1.2 - Math.log10(Math.max(it.d, 50) / 50) * 0.5));
+    it.escala = Math.max(0.7, Math.min(1.2, 1.2 - Math.log10(Math.max(it.d, 50) / 50) * 0.5));
     it.el.style.display = "block";
-    const nome = it.el.querySelector(".nome"), pino = it.el.querySelector("img");
-    pino.style.display = "block";
-    const largura = nome.offsetWidth * escala;
+    it.nome = it.el.querySelector(".nome"); it.pino = it.el.querySelector("img");
+    it.pino.style.display = "block";
+    const largura = it.nome.offsetWidth * it.escala;
     let n = degraus.findIndex((dir) => it.x - largura / 2 > dir + 6);
     if (n === -1) { n = degraus.length; degraus.push(0); }
     degraus[n] = it.x + largura / 2;
-    // Perto: sobe o marcador inteiro (nome + pino), para não cobrir o pino de baixo.
-    // Longe (> 1 km) os pinos caem no mesmo lugar: fica um pino só, com os nomes em coluna.
-    const longe = it.d > 1000;
-    const alturaPino = (it.el.offsetHeight - nome.offsetHeight) * escala;
-    let base = horizonte - n * (it.el.offsetHeight * escala + 8);       // perto
-    if (longe && n > 0) {
-      pino.style.display = "none";
-      base = horizonte - alturaPino - n * (nome.offsetHeight * escala + 6);  // longe
+    it.n = n;
+  });
+  // Normal: cada degrau sobe o marcador inteiro (nome + pino), sem cobrir o pino de baixo.
+  // Se não couber na tela (ou de longe, onde os pinos caem no mesmo lugar), fica um pino
+  // só embaixo e os nomes em coluna acima dele.
+  const alturaTotal = (it) => it.el.offsetHeight * it.escala;
+  const compacto = visiveis.some((it) => it.d > 1000 ||
+    horizonte - it.n * (alturaTotal(it) + 8) - alturaTotal(it) < 10);
+  visiveis.forEach((it) => {
+    let base = horizonte - it.n * (alturaTotal(it) + 8);
+    if (compacto && it.n > 0) {
+      const alturaPino = (it.el.offsetHeight - it.nome.offsetHeight) * it.escala;
+      it.pino.style.display = "none";
+      base = horizonte - alturaPino - it.n * (it.nome.offsetHeight * it.escala + 6);
     }
     it.el.style.left = it.x + "px";
     it.el.style.top = base + "px";
-    it.el.style.transform = `translate(-50%, -100%) scale(${escala})`;
-    it.el.style.zIndex = String(50 - n);   // o de baixo fica por cima: nenhum nome some
+    it.el.style.transform = `translate(-50%, -100%) scale(${it.escala})`;
+    it.el.style.zIndex = String(50 - it.n);   // o de baixo fica por cima: nenhum nome some
   });
 
-  const prec = posicao.prec != null ? ` ±${Math.round(posicao.prec)} m` : "";
-  status.innerHTML = `GPS${prec} — <b>${itens[0].p.nome}</b> a ${textoDistancia(itens[0].d)}`;
-  // GPS ruim (dentro de prédio ou localização "aproximada"): avisa, porque as distâncias erram
-  document.getElementById("manual").style.display = (posicao.prec > 100 || manual) ? "block" : "none";
-  if (manual) status.innerHTML = `Posição escolhida: <b>${manual.nome}</b> — ${itens[0].p.nome} a ${textoDistancia(itens[0].d)}`;
-  else if (posicao.prec > 50) status.innerHTML = `<span style="color:#ff6b6b">⚠ GPS impreciso (±${Math.round(posicao.prec)} m)</span>: ` +
-    `dentro de prédio o GPS não pega. Vá para um lugar aberto ou escolha embaixo onde você está.`;
-  detalhe.textContent = semBussola
-    ? "Bússola sem resposta: mexa o celular em 8; no Android, libere 'Sensores de movimento' do site."
-    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela · v16`;
+  // Tela limpa: só a câmera e os prédios. O painel do topo só aparece se houver problema.
+  let aviso = "";
+  if (!manual && posicao.prec > 50) aviso = `<span style="color:#ff6b6b">⚠ GPS impreciso (±${Math.round(posicao.prec)} m)</span>: ` +
+    `dentro de prédio o GPS não pega. Vá para um lugar aberto ou recarregue e escolha onde você está.`;
+  if (semBussola) aviso += (aviso ? "<br>" : "") +
+    "Bússola sem resposta: mexa o celular em 8; no Android, libere 'Sensores de movimento' do site.";
+  status.innerHTML = aviso; detalhe.textContent = "";
+  document.getElementById("painel").style.display = aviso ? "block" : "none";
 }
 
 // ---------------------------------------------------------------- botão INICIAR
@@ -303,7 +299,14 @@ document.getElementById("btnIniciar").onclick = async () => {
     return;
   }
 
-  // 3. Localização
+  // 3. Localização: o lugar escolhido na lista, ou o GPS
+  if (ondeEstou.value !== "") {
+    manual = LUGARES[+ondeEstou.value];
+    posicao = { lat: manual.lat, lon: manual.lon, prec: null };
+    document.getElementById("inicio").remove();
+    ligarBussola(); desenhar();
+    return;
+  }
   msg.textContent = "Pedindo a localização...";
   navigator.geolocation.getCurrentPosition((p) => {
     document.getElementById("inicio").remove();
