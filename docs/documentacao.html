@@ -102,7 +102,7 @@ o <code>watchPosition</code> não respondia, por isso foi usada a leitura perió
 <p>No Android, o evento <code>deviceorientationabsolute</code> dá os ângulos alpha/beta/gamma em relação
 ao norte; <code>rumoDaCamera()</code> converte esses ângulos na direção para onde a câmera traseira aponta
 (fórmula da especificação W3C). No iPhone, <code>webkitCompassHeading</code> já vem pronto.
-<code>novaLeitura()</code> aplica um filtro forte (média circular) e, no desenho, a direção só muda quando a diferença passa de 2°: assim pequenas mexidas da mão não tiram o pino do lugar.</p>
+<code>novaLeitura()</code> aplica um filtro leve (média circular) que tira a tremida sem atrasar o movimento, e lê também a inclinação do celular (beta): em pé, beta ≈ 90°.</p>
 <h3>Cálculos — <code>azimute()</code>, <code>diferenca()</code></h3>
 <p><code>azimute()</code> calcula a direção (0° = norte, 90° = leste) da pessoa até o ponto.
 <code>diferenca()</code> dá o ângulo entre essa direção e a da câmera, de -180° a 180°
@@ -112,6 +112,7 @@ ao norte; <code>rumoDaCamera()</code> converte esses ângulos na direção para 
 <li>Escolhe os pontos: só "UniAnchieta" se estiver a mais de 1 km; senão, os 7 prédios.</li>
 <li>Se |diferença| ≤ metade do campo de visão (≈55° com o celular em pé), o pino vai para a posição
 horizontal proporcional ao ângulo: <code>x = centro + (diferença / (campo/2)) × (largura/2)</code>.</li>
+<li>Altura: os pinos ficam presos à linha do horizonte, que sobe ou desce na tela conforme a inclinação do celular — assim o pino fica "parado" no prédio e só a câmera se move.</li>
 <li>Tamanho pela distância (escala logarítmica): grande a ~100 m, pequeno a vários km.</li>
 <li>Nomes que ficariam um sobre o outro sobem para o próximo "degrau" livre (comum de longe, quando todos os prédios estão quase na mesma direção).</li>
 <li>Fora do campo de visão: seta na borda esquerda ou direita, com nome e distância.</li>
