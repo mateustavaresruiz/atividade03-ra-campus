@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>RA Campus Anchieta</title>
-  <script src="pontos.js?v=13"></script>
+  <script src="pontos.js?v=14"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
@@ -247,9 +247,12 @@ function desenhar() {
 
   const prec = posicao.prec != null ? ` ±${Math.round(posicao.prec)} m` : "";
   status.innerHTML = `GPS${prec} — <b>${itens[0].p.nome}</b> a ${textoDistancia(itens[0].d)}`;
+  // GPS ruim (dentro de prédio ou localização "aproximada"): avisa, porque as distâncias erram
+  if (posicao.prec > 50) status.innerHTML = `<span style="color:#ff6b6b">⚠ GPS impreciso (±${Math.round(posicao.prec)} m)</span>: ` +
+    `vá para um lugar aberto e ative a localização precisa`;
   detalhe.textContent = semBussola
     ? "Bússola sem resposta: mexa o celular em 8; no Android, libere 'Sensores de movimento' do site."
-    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela · v13`;
+    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela · v14`;
 }
 
 // ---------------------------------------------------------------- botão INICIAR
