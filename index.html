@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>RA Campus Anchieta</title>
-  <script src="pontos.js?v=12"></script>
+  <script src="pontos.js?v=13"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
@@ -34,11 +34,6 @@
     }
     .seta.esq { left: 6px; } .seta.dir { right: 6px; }
 
-    #botaoModo {
-      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 3000;
-      background: rgba(0, 40, 90, .9); color: #fff; border: 2px solid #ffd23f; border-radius: 20px;
-      padding: 10px 18px; font-size: 15px; font-weight: bold;
-    }
     #inicio {
       position: fixed; inset: 0; z-index: 5000; background: #0b2a4a; color: #fff;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -60,8 +55,6 @@
     <div id="detalhe"></div>
   </div>
 
-  <button id="botaoModo"></button>
-
   <div id="inicio">
     <img src="modelos/pino.png" alt="">
     <h1>RA Campus Anchieta</h1>
@@ -80,25 +73,17 @@
 //   - Dentro do campo de visão: desenha o pino com nome e distância naquele ponto da tela
 //     (menor quando longe, maior quando perto).
 //   - Fora do campo de visão: seta na borda (◀ ou ▶) mostrando para que lado virar.
-//   Longe do campus (> 1 km) aparece um pino só, "UniAnchieta"; perto, um por prédio
-//   (separa sozinho ao chegar). O botão embaixo alterna entre os dois.
 // =====================================================================================
 const RUMO_FIXO = new URLSearchParams(location.search).get("rumo");  // só para testar no PC
 
 const status = document.getElementById("status");
 const detalhe = document.getElementById("detalhe");
 const camada = document.getElementById("camada");
-const botaoModo = document.getElementById("botaoModo");
-// Alterna entre "todos os prédios" e "só a faculdade"
-botaoModo.onclick = () => {
-  modo = botaoModo.textContent.startsWith("Mostrar todos") ? "todos" : "campus";
-};
 
 let posicao = null;   // { lat, lon, prec }
 let rumo = null;      // para onde a câmera aponta (0 = norte, 90 = leste)
 let inclinacao = 0;    // quanto a câmera aponta para cima (+) ou para baixo (-), em graus
 let ultimaBussola = 0;
-let modo = "auto";    // "auto" (longe: faculdade; perto: prédios), "todos" ou "campus"
 
 // ---------------------------------------------------------------- matemática
 const rad = (g) => g * Math.PI / 180, grau = (r) => r * 180 / Math.PI;
@@ -203,18 +188,8 @@ function desenhar() {
   // aponta para cima. Os pinos ficam presos nela, como se estivessem no prédio.
   const horizonte = H / 2 + (inclinacao / (campoV / 2)) * (H / 2);
 
-  // Automático: longe só a faculdade, perto cada prédio. O botão pode forçar um dos dois.
-  const dCampus = distanciaMetros(posicao.lat, posicao.lon, CAMPUS.lat, CAMPUS.lon);
-  const soCampus = modo === "campus" || (modo === "auto" && dCampus > DISTANCIA_SEPARAR_PREDIOS);
-  const ativos = soCampus ? [CAMPUS] : PONTOS;
-  botaoModo.textContent = soCampus ? "Mostrar todos os prédios" : "Mostrar só a faculdade";
 
-  // esconde o que não está ativo
-  elementos.forEach((v, nome) => {
-    if (!ativos.some((p) => p.nome === nome)) { v.el.style.display = "none"; v.seta.style.display = "none"; }
-  });
-
-  const itens = ativos.map((p) => ({
+  const itens = PONTOS.map((p) => ({
     p, ...elementoDe(p),
     d: distanciaMetros(posicao.lat, posicao.lon, p.lat, p.lon),
     az: azimute(posicao.lat, posicao.lon, p.lat, p.lon),
@@ -236,7 +211,7 @@ function desenhar() {
       const n = lado === "esq" ? esq++ : dir++;
       it.seta.className = "seta " + lado;
       it.seta.style.display = "block";
-      it.seta.style.top = (70 + n * 38) + "px";
+      it.seta.style.top = ""; it.seta.style.bottom = (20 + n * 38) + "px";
       it.seta.textContent = lado === "esq"
         ? `◀ ${it.p.nome} · ${textoDistancia(it.d)}` : `${it.p.nome} · ${textoDistancia(it.d)} ▶`;
     }
@@ -247,15 +222,25 @@ function desenhar() {
   // Tamanho: grande perto (≈100 m), pequeno longe (vários km).
   const degraus = [];   // borda direita ocupada em cada degrau
   visiveis.sort((a, b) => a.x - b.x).forEach((it) => {
-    const escala = Math.max(0.5, Math.min(1.3, 1.3 - Math.log10(Math.max(it.d, 50) / 50) * 0.35));
+    const escala = Math.max(0.7, Math.min(1.2, 1.2 - Math.log10(Math.max(it.d, 50) / 50) * 0.5));
     it.el.style.display = "block";
-    const largura = it.el.querySelector(".nome").offsetWidth * escala;
-    const altura = it.el.querySelector(".nome").offsetHeight * escala;
+    const nome = it.el.querySelector(".nome"), pino = it.el.querySelector("img");
+    pino.style.display = "block";
+    const largura = nome.offsetWidth * escala;
     let n = degraus.findIndex((dir) => it.x - largura / 2 > dir + 6);
     if (n === -1) { n = degraus.length; degraus.push(0); }
     degraus[n] = it.x + largura / 2;
+    // Perto: sobe o marcador inteiro (nome + pino), para não cobrir o pino de baixo.
+    // Longe (> 1 km) os pinos caem no mesmo lugar: fica um pino só, com os nomes em coluna.
+    const longe = it.d > 1000;
+    const alturaPino = (it.el.offsetHeight - nome.offsetHeight) * escala;
+    let base = horizonte - n * (it.el.offsetHeight * escala + 8);       // perto
+    if (longe && n > 0) {
+      pino.style.display = "none";
+      base = horizonte - alturaPino - n * (nome.offsetHeight * escala + 6);  // longe
+    }
     it.el.style.left = it.x + "px";
-    it.el.style.top = (horizonte - n * (altura + 8)) + "px";
+    it.el.style.top = base + "px";
     it.el.style.transform = `translate(-50%, -100%) scale(${escala})`;
     it.el.style.zIndex = String(50 - n);   // o de baixo fica por cima: nenhum nome some
   });
@@ -264,7 +249,7 @@ function desenhar() {
   status.innerHTML = `GPS${prec} — <b>${itens[0].p.nome}</b> a ${textoDistancia(itens[0].d)}`;
   detalhe.textContent = semBussola
     ? "Bússola sem resposta: mexa o celular em 8; no Android, libere 'Sensores de movimento' do site."
-    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela · v12`;
+    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela · v13`;
 }
 
 // ---------------------------------------------------------------- botão INICIAR

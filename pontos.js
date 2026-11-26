@@ -12,16 +12,6 @@ const PONTOS = [
   { nome: "Anfiteatro",            lat: -23.215327, lon: -46.891176 },
 ];
 
-// Ponto único usado quando você está longe (centro dos prédios acima)
-const CAMPUS = {
-  nome: "UniAnchieta",
-  lat: PONTOS.reduce((s, p) => s + p.lat, 0) / PONTOS.length,
-  lon: PONTOS.reduce((s, p) => s + p.lon, 0) / PONTOS.length,
-};
-
-// A partir desta distância do campus, mostra só o pino "UniAnchieta"
-const DISTANCIA_SEPARAR_PREDIOS = 1000;   // metros
-
 // Distância em metros entre duas coordenadas (fórmula de Haversine)
 function distanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000, rad = Math.PI / 180;

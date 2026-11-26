@@ -5,15 +5,15 @@ e veja um pino com o nome e a distância de cada prédio do campus Prof. Pedro C
 (UniAnchieta, Jundiaí). Quando o prédio está fora da tela, uma seta na borda mostra para
 que lado virar.
 
-- Longe do campus (mais de 1 km): um pino só, **UniAnchieta**, com a distância em km.
-- Perto: um pino por ponto — Prédios 1 a 4, Biblioteca, Prédio Administrativo e Anfiteatro.
+- Mostra os 7 pontos: Prédios 1 a 4, Biblioteca, Prédio Administrativo e Anfiteatro.
+- De longe, um pino só com os nomes em coluna; de perto, um pino por prédio.
 
 App: https://mateustavaresruiz.github.io/atividade03-ra-campus/
 
 ## Arquivos
 
 - `index.html` — câmera, GPS, bússola, cálculo de direção e desenho dos pinos e setas
-- `pontos.js` — coordenadas dos prédios (OpenStreetMap), ponto do campus e distância
+- `pontos.js` — coordenadas dos prédios (OpenStreetMap) e cálculo de distância
 - `modelos/map_pin.fbx` — marcador fornecido pelo professor
 - `modelos/pino.png` — imagem do mesmo marcador, usada na tela
 - `docs/` — documentação (PDF), link do projeto e roteiro do vídeo

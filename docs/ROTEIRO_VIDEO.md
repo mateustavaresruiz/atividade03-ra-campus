@@ -7,7 +7,7 @@ O enunciado pede: **explicação do grupo sobre a aplicação + filmagem dos pon
   A câmera do app mostra o ambiente com os pinos por cima, então a gravação já sai certa.
 - Nas opções do gravador, ligue o **som do microfone** — assim a sua explicação entra no vídeo.
 - Celular **em pé** (retrato) e com a rotação automática travada.
-- No painel de cima deve aparecer **"v12"**. Se não aparecer, feche a aba e abra o link de novo.
+- No painel de cima deve aparecer **"v13"**. Se não aparecer, feche a aba e abra o link de novo.
 - Fique a **pelo menos 50 m** dos prédios, em lugar aberto (o GPS fica melhor).
 
 ## Parte 1 — Explicação (1 min, pode falar já com o app aberto)
@@ -17,14 +17,14 @@ com o giroscópio para saber para onde a câmera aponta. Com isso calcula a dire
 distância de cada prédio e desenha o marcador com o nome em cima. Se o prédio está fora da
 tela, aparece uma seta mostrando para que lado virar."
 
-## Parte 2 — Chegando (30 s)
-Mostre o pino "UniAnchieta" com a distância diminuindo. Com menos de 1 km ele se separa nos
-prédios sozinho (ou toque em "Mostrar todos os prédios").
+## Parte 2 — Na entrada do campus (1 min)
+Fique na entrada, uns 70 m antes do Anfiteatro (todos os prédios ficam a mais de 50 m).
+Aponte para o campus: aparecem os pinos com nome e distância. Mexa um pouco o celular para
+mostrar que os pinos ficam parados no lugar. O Anfiteatro fica um pouco à direita (siga a seta).
 
-## Parte 3 — No campus (2 min)
-De um ponto aberto (ex.: perto do Anfiteatro), gire devagar e pare uns 2 segundos em cada
-prédio, falando o nome: Prédio 1, 2, 3, 4, Biblioteca, Administrativo e Anfiteatro.
-Se algum ficar escondido, ande até outro ponto e mostre os que faltaram.
+## Parte 3 — Dentro do campus (1 a 2 min)
+Ande até o caminho entre o Prédio 1 e o Administrativo e gire devagar, parando uns 2 segundos
+em cada prédio e falando o nome: Prédio 1, 2, 3, 4, Biblioteca, Administrativo e Anfiteatro.
 
 ## Encerramento (15 s)
 "O app localiza os 7 pontos do mapa — Prédios 1 a 4, Biblioteca, Administrativo e

@@ -30,10 +30,10 @@ campus, com o <b>nome logo acima</b> e a distância. Quando o prédio está fora
 borda indica para que lado virar. A posição vem do <b>GPS</b> e a direção para onde a câmera aponta vem
 da <b>bússola</b> (sensores de orientação) — é a chamada RA baseada em localização.</p>
 <ul>
-<li><b>Longe do campus</b> (mais de 1 km): um pino só, "UniAnchieta", com a distância em km.</li>
-<li><b>Perto</b>: um pino por ponto — Prédios 1 a 4, Biblioteca, Prédio Administrativo e Anfiteatro.</li>
+<li>Sempre mostra os 7 pontos: Prédios 1 a 4, Biblioteca, Prédio Administrativo e Anfiteatro.</li>
 <li>O pino é pequeno quando o ponto está longe e cresce conforme a pessoa se aproxima.</li>
-<li>Um botão na parte de baixo alterna entre "todos os prédios" e "só a faculdade"; ao chegar a menos de 1 km, o app separa os prédios sozinho.</li>
+<li>De longe (mais de 1 km) os prédios ficam praticamente na mesma direção: aparece um pino só,
+com os nomes dos prédios em coluna acima dele.</li>
 </ul>
 
 <h2>2. Tecnologias</h2>
@@ -54,7 +54,7 @@ o que deixou o app mais leve e confiável.</p>
 <h2>3. Estrutura de arquivos</h2>
 <pre>atividade03-ra-campus/
 ├── index.html         app: câmera, GPS, bússola, cálculos e desenho
-├── pontos.js          prédios (nome, latitude, longitude), ponto do campus e distância
+├── pontos.js          prédios (nome, latitude, longitude) e cálculo de distância
 ├── modelos/
 │   ├── map_pin.fbx    marcador 3D fornecido pelo professor
 │   └── pino.png       imagem do mesmo marcador, usada na tela
@@ -74,8 +74,6 @@ o que deixou o app mais leve e confiável.</p>
 <h2>5. pontos.js</h2>
 <ul>
 <li><code>PONTOS</code>: os 7 pontos com o centro de cada prédio no OpenStreetMap.</li>
-<li><code>CAMPUS</code>: média das coordenadas dos prédios; é o pino "UniAnchieta" usado de longe.</li>
-<li><code>DISTANCIA_SEPARAR_PREDIOS</code>: 1000 m — abaixo disso aparecem os prédios separados.</li>
 <li><code>distanciaMetros()</code>: fórmula de Haversine (distância em metros entre duas coordenadas).</li>
 </ul>
 <table><tr><th>Ponto</th><th>Latitude</th><th>Longitude</th></tr>
@@ -113,13 +111,14 @@ movimento vem do giroscópio e a bússola só corrige, devagar, a diferença at�
 (negativo = o ponto está à esquerda).</p>
 <h3>Desenho — <code>desenhar()</code></h3>
 <ul>
-<li>Escolhe os pontos: só "UniAnchieta" se estiver a mais de 1 km; senão, os 7 prédios.</li>
 <li>Se |diferença| ≤ metade do campo de visão (≈55° com o celular em pé), o pino vai para a posição
 horizontal proporcional ao ângulo: <code>x = centro + (diferença / (campo/2)) × (largura/2)</code>.</li>
 <li>Altura: os pinos ficam presos à linha do horizonte, que sobe ou desce na tela conforme a inclinação do celular — assim o pino fica "parado" no prédio e só a câmera se move.</li>
 <li>Tamanho pela distância (escala logarítmica): grande a ~100 m, pequeno a vários km.</li>
-<li>Nomes que ficariam um sobre o outro sobem para o próximo "degrau" livre (comum de longe, quando todos os prédios estão quase na mesma direção).</li>
-<li>Fora do campo de visão: seta na borda esquerda ou direita, com nome e distância.</li>
+<li>Marcadores que ficariam um sobre o outro sobem para o próximo "degrau" livre (nome e pino
+inteiros, para não cobrir o pino de baixo). De longe (mais de 1 km) os pinos cairiam no mesmo
+lugar, então fica um pino só e os nomes em coluna.</li>
+<li>Fora do campo de visão: seta na parte de baixo, à esquerda ou à direita, com nome e distância.</li>
 <li>Painel no topo: precisão do GPS, ponto mais perto e direção da câmera em graus.</li>
 </ul>
 
@@ -128,13 +127,14 @@ horizontal proporcional ao ângulo: <code>x = centro + (diferença / (campo/2)) 
 direção da câmera definidas por teste):</p>
 <table>
 <tr><th>Situação</th><th>Resultado</th></tr>
-<tr><td>8 km do campus, olhando para a faculdade</td><td>Um pino pequeno "UniAnchieta · 8,0 km" no centro</td></tr>
-<tr><td>8 km do campus, de costas</td><td>Seta "◀ UniAnchieta · 8,0 km"</td></tr>
-<tr><td>600 m do campus</td><td>7 prédios separados na tela</td></tr>
-<tr><td>Dentro do campus, olhando para o norte</td><td>5 prédios na tela com nome e distância; setas para Prédio 4 e Anfiteatro</td></tr>
+<tr><td>5 km do campus, olhando para a faculdade</td><td>Um pino com os 7 nomes em coluna, cada um com a distância</td></tr>
+<tr><td>5 km do campus, de costas</td><td>Setas "◀ nome · 5,0 km" para cada ponto</td></tr>
+<tr><td>Entrada do campus (70 m do Anfiteatro), olhando para os prédios</td><td>6 pinos na tela, sem sobreposição; seta para o Anfiteatro</td></tr>
+<tr><td>Girar 10° com a bússola atrasada (simulada)</td><td>O pino anda ~116 px para o lado oposto na hora (giroscópio)</td></tr>
+<tr><td>Inclinar 20° para cima</td><td>Os pinos descem na tela (presos ao horizonte)</td></tr>
 </table>
-<p><img src="print_longe.png"><br><small>De longe (8 km): pino único da faculdade. O fundo verde é a câmera falsa do navegador de teste.</small></p>
-<p><img src="print_campus.png"><br><small>No campus: um pino por prédio e setas para os que estão fora da tela.</small></p>
+<p><img src="print_longe.png"><br><small>De longe (5 km): um pino com os nomes dos prédios. O fundo verde é a câmera falsa do navegador de teste.</small></p>
+<p><img src="print_campus.png"><br><small>Na entrada do campus: um pino por prédio e seta para o que está fora da tela.</small></p>
 
 <h2>8. Como usar</h2>
 <ol>
