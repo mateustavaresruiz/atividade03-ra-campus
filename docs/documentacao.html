@@ -95,7 +95,7 @@ movimento (<code>DeviceOrientationEvent.requestPermission</code>, exigido no iPh
 (<code>getCurrentPosition</code>). Se algo for negado, a própria tela explica como liberar.</p>
 <p><img src="print_inicio.png" style="max-width:45%"><br><small>Tela inicial: escolha de onde você está e botão INICIAR.</small></p>
 <h3>GPS — <code>ligarGPS()</code></h3>
-<p>Lê a posição com <code>getCurrentPosition</code> a cada 3 segundos (alta precisão). Em alguns celulares
+<p>Lê a posição com <code>getCurrentPosition</code> a cada 3 segundos (alta precisão). Com GPS bom, cada leitura nova é misturada com a anterior (suavização), para os pinos não tremerem. Em alguns celulares
 o <code>watchPosition</code> não respondia, por isso foi usada a leitura periódica.</p>
 <h3>Bússola + giroscópio — <code>ligarBussola()</code>, <code>leituraGiro()</code>, <code>leituraBussola()</code></h3>
 <p><code>rumoDaCamera()</code> converte os ângulos alpha/beta/gamma na direção para onde a câmera traseira
@@ -116,6 +116,7 @@ movimento vem do giroscópio e a bússola só corrige, devagar, a diferença at�
 horizontal proporcional ao ângulo: <code>x = centro + (diferença / (campo/2)) × (largura/2)</code>.</li>
 <li>Altura: os pinos ficam presos à linha do horizonte, que sobe ou desce na tela conforme a inclinação do celular — assim o pino fica "parado" no prédio e só a câmera se move.</li>
 <li>Tamanho pela distância (escala logarítmica): grande a ~100 m, pequeno a vários km.</li>
+<li>O nome nunca sai pela borda da tela; o prédio a menos de 20 m (onde a pessoa está) não é mostrado.</li>
 <li>Marcadores que ficariam um sobre o outro sobem para o próximo "degrau" livre (nome e pino
 inteiros, para não cobrir o pino de baixo). De longe (mais de 1 km) os pinos cairiam no mesmo
 lugar, então fica um pino só e os nomes em coluna.</li>

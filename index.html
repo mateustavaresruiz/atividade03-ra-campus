@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>RA Campus Anchieta</title>
-  <script src="pontos.js?v=17"></script>
+  <script src="pontos.js?v=18"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
@@ -165,7 +165,13 @@ LUGARES.forEach((l, i) => ondeEstou.add(new Option(l.nome, i)));
 // ---------------------------------------------------------------- GPS
 function ligarGPS(primeira) {
   const usar = (p) => {
-    posicao = { lat: p.coords.latitude, lon: p.coords.longitude, prec: p.coords.accuracy };
+    const nova = { lat: p.coords.latitude, lon: p.coords.longitude, prec: p.coords.accuracy };
+    // GPS bom: suaviza os pequenos pulos entre leituras (os pinos não ficam "tremendo")
+    if (posicao && nova.prec < 50 && posicao.prec < 50) {
+      nova.lat = posicao.lat + (nova.lat - posicao.lat) * 0.4;
+      nova.lon = posicao.lon + (nova.lon - posicao.lon) * 0.4;
+    }
+    posicao = nova;
   };
   if (primeira) usar(primeira);
   const ler = () => navigator.geolocation.getCurrentPosition(usar, (e) => {
@@ -211,7 +217,11 @@ function desenhar() {
     p, ...elementoDe(p),
     d: distanciaMetros(posicao.lat, posicao.lon, p.lat, p.lon),
     az: azimute(posicao.lat, posicao.lon, p.lat, p.lon),
-  })).sort((a, b) => a.d - b.d);
+  })).filter((it) => {
+    // A menos de 20 m você está no próprio prédio: não há para onde apontar
+    if (it.d >= 20) return true;
+    it.el.style.display = "none"; it.seta.style.display = "none"; return false;
+  }).sort((a, b) => a.d - b.d);
 
   let esq = 0, dir = 0;
   const visiveis = [];
@@ -245,6 +255,7 @@ function desenhar() {
     it.nome = it.el.querySelector(".nome"); it.pino = it.el.querySelector("img");
     it.pino.style.display = "block";
     const largura = it.nome.offsetWidth * it.escala;
+    it.x = Math.min(Math.max(it.x, largura / 2 + 4), W - largura / 2 - 4);  // nome inteiro na tela
     let n = degraus.findIndex((dir) => it.x - largura / 2 > dir + 6);
     if (n === -1) { n = degraus.length; degraus.push(0); }
     degraus[n] = it.x + largura / 2;
