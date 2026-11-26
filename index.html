@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>RA Campus Anchieta</title>
-  <script src="pontos.js?v=8"></script>
+  <script src="pontos.js?v=9"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
@@ -12,14 +12,14 @@
     #video { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     #camada { position: fixed; inset: 0; pointer-events: none; }
     #painel {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 3000;
       background: rgba(0, 40, 90, .85); color: #fff; padding: 8px 12px; font-size: 14px;
     }
     #painel b { color: #ffd23f; }
     #detalhe { font-size: 12px; margin-top: 3px; opacity: .9; }
 
-    /* Marcador do prédio: nome em cima, pino embaixo */
-    .marcador { position: absolute; transform: translate(-50%, -100%); text-align: center; transition: left .08s linear; }
+    /* Marcador: nome e distância em cima, pino embaixo */
+    .marcador { position: absolute; text-align: center; transform-origin: 50% 100%; }
     .marcador .nome {
       background: rgba(0, 40, 90, .9); color: #fff; font-weight: bold; white-space: nowrap;
       padding: 5px 10px; border-radius: 8px; font-size: 15px; display: inline-block;
@@ -27,19 +27,15 @@
     .marcador .dist { display: block; font-size: 12px; font-weight: normal; color: #ffd23f; }
     .marcador img { display: block; margin: 4px auto 0; width: 56px; filter: drop-shadow(0 3px 4px rgba(0,0,0,.5)); }
 
-    /* Seta na borda para prédios fora da tela */
+    /* Seta na borda para o que está fora da tela */
     .seta {
-      position: absolute; z-index: 2000; background: rgba(214, 40, 40, .92); color: #fff; font-weight: bold;
-      padding: 6px 10px; border-radius: 8px; font-size: 13px; white-space: nowrap;
+      position: absolute; z-index: 2000; background: rgba(214, 40, 40, .92); color: #fff;
+      font-weight: bold; padding: 6px 10px; border-radius: 8px; font-size: 13px; white-space: nowrap;
     }
     .seta.esq { left: 6px; } .seta.dir { right: 6px; }
 
-    #rodape { position: fixed; bottom: 10px; left: 0; right: 0; z-index: 10; text-align: center; }
-    #rodape a { background: rgba(0,0,0,.6); color: #fff; padding: 6px 10px; border-radius: 6px;
-                text-decoration: none; font-size: 13px; margin: 0 3px; }
-
     #inicio {
-      position: fixed; inset: 0; z-index: 20; background: #0b2a4a; color: #fff;
+      position: fixed; inset: 0; z-index: 5000; background: #0b2a4a; color: #fff;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       padding: 24px; text-align: center; gap: 14px;
     }
@@ -58,200 +54,178 @@
     <div id="status">Aguardando GPS...</div>
     <div id="detalhe"></div>
   </div>
-  <div id="rodape">
-    <a href="index.html">Campus</a>
-    <a href="index.html?teste=1">Modo teste</a>
-    <a href="calibrar.html">Calibrar</a>
-    <a href="ar3d.html">Versão 3D</a>
-  </div>
 
   <div id="inicio">
     <img src="modelos/pino.png" alt="">
     <h1>RA Campus Anchieta</h1>
-    <p>Segure o celular <b>em pé</b> e aponte para os prédios.<br>
+    <p>Segure o celular <b>em pé</b> e gire devagar.<br>
        O app vai pedir <b>câmera</b>, <b>localização</b> e <b>movimento</b>: toque em <b>Permitir</b>.</p>
     <button id="btnIniciar">INICIAR</button>
     <div class="msg" id="msgInicio"></div>
-    <small>v8</small>
+    <small>v9</small>
   </div>
 
 <script>
 // =====================================================================================
-// RA markerless por localização:
-//   GPS  -> onde estou        Bússola -> para onde a câmera aponta
-//   Para cada prédio: calcula a direção (azimute) e a distância.
-//   Se o prédio está dentro do campo de visão da câmera, desenha o pino com o nome
-//   na posição certa da tela; se está fora, mostra uma seta na borda (◀ ou ▶).
+// RA markerless por localização (como um "Maps" na câmera):
+//   GPS     -> onde estou
+//   Bússola -> para onde a câmera aponta
+//   Para cada ponto: calcula direção (azimute) e distância.
+//   - Dentro do campo de visão: desenha o pino com nome e distância naquele ponto da tela
+//     (menor quando longe, maior quando perto).
+//   - Fora do campo de visão: seta na borda (◀ ou ▶) mostrando para que lado virar.
+//   Longe do campus (> 1 km) aparece um pino só, "UniAnchieta"; perto, um por prédio.
 // =====================================================================================
-const Q = new URLSearchParams(location.search);
-const MODO_TESTE = Q.has("teste");     // pontos em volta de onde você está
-const SIMULAR = Q.has("simular");      // finge estar no campus (teste no PC)
-const RUMO_FIXO = Q.has("rumo") ? +Q.get("rumo") : null;   // teste no PC: rumo fixo em graus
+const RUMO_FIXO = new URLSearchParams(location.search).get("rumo");  // só para testar no PC
 
 const status = document.getElementById("status");
 const detalhe = document.getElementById("detalhe");
 const camada = document.getElementById("camada");
 
-let posicao = null;    // { lat, lon, prec }
-let pontos = [];       // { nome, lat, lon, el }
-let rumo = null;       // para onde a câmera aponta (0 = norte, 90 = leste)
+let posicao = null;   // { lat, lon, prec }
+let rumo = null;      // para onde a câmera aponta (0 = norte, 90 = leste)
+let ultimaBussola = 0;
 
 // ---------------------------------------------------------------- matemática
 const rad = (g) => g * Math.PI / 180, grau = (r) => r * 180 / Math.PI;
 
-// Azimute (direção) de A para B, em graus a partir do norte, sentido horário
+// Direção de A para B em graus a partir do norte, no sentido horário
 function azimute(lat1, lon1, lat2, lon2) {
   const y = Math.sin(rad(lon2 - lon1)) * Math.cos(rad(lat2));
   const x = Math.cos(rad(lat1)) * Math.sin(rad(lat2)) -
             Math.sin(rad(lat1)) * Math.cos(rad(lat2)) * Math.cos(rad(lon2 - lon1));
   return (grau(Math.atan2(y, x)) + 360) % 360;
 }
-// Diferença de ângulo no intervalo -180..180 (negativo = à esquerda)
+// Diferença entre ângulos, de -180 a 180 (negativo = à esquerda)
 const diferenca = (a, b) => ((a - b + 540) % 360) - 180;
 
-// Direção da câmera traseira a partir dos sensores (fórmula da especificação W3C)
+// Para onde a câmera traseira aponta, a partir dos sensores (fórmula da W3C)
 function rumoDaCamera(alpha, beta, gamma) {
   const x = rad(beta || 0), y = rad(gamma || 0), z = rad(alpha || 0);
-  const cX = Math.cos(x), cY = Math.cos(y), cZ = Math.cos(z);
-  const sX = Math.sin(x), sY = Math.sin(y), sZ = Math.sin(z);
-  const Vx = -cZ * sY - sZ * sX * cY;
-  const Vy = -sZ * sY + cZ * sX * cY;
+  const Vx = -Math.cos(z) * Math.sin(y) - Math.sin(z) * Math.sin(x) * Math.cos(y);
+  const Vy = -Math.sin(z) * Math.sin(y) + Math.cos(z) * Math.sin(x) * Math.cos(y);
   let h = Math.atan(Vx / Vy);
   if (Vy < 0) h += Math.PI; else if (Vx < 0) h += 2 * Math.PI;
   return grau(h);
 }
 
+const textoDistancia = (d) =>
+  d >= 1000 ? (d / 1000).toFixed(1).replace(".", ",") + " km" : Math.round(d) + " m";
+
 // ---------------------------------------------------------------- bússola
-let ultimaBussola = 0;
 function novaLeitura(h) {
   if (h == null || isNaN(h)) return;
   ultimaBussola = Date.now();
   // suaviza (média circular) para o pino não tremer
-  if (rumo == null) rumo = h;
-  else rumo = (rumo + diferenca(h, rumo) * 0.25 + 360) % 360;
+  rumo = rumo == null ? h : (rumo + diferenca(h, rumo) * 0.25 + 360) % 360;
 }
 function ligarBussola() {
-  if (RUMO_FIXO != null) { rumo = RUMO_FIXO; ultimaBussola = Date.now(); return; }
-  // iPhone: webkitCompassHeading já vem pronto
-  window.addEventListener("deviceorientation", (e) => {
+  if (RUMO_FIXO != null) { rumo = +RUMO_FIXO; return; }
+  window.addEventListener("deviceorientation", (e) => {          // iPhone
     if (e.webkitCompassHeading != null) novaLeitura(e.webkitCompassHeading);
     else if (e.absolute) novaLeitura(rumoDaCamera(e.alpha, e.beta, e.gamma));
   });
-  // Android: evento "absoluto" (em relação ao norte)
-  window.addEventListener("deviceorientationabsolute", (e) => {
+  window.addEventListener("deviceorientationabsolute", (e) => {  // Android
     novaLeitura(rumoDaCamera(e.alpha, e.beta, e.gamma));
   });
 }
 
 // ---------------------------------------------------------------- GPS
-function aplicarPosicao(lat, lon, prec) {
-  if (MODO_TESTE && posicao) return;   // em casa o GPS "pula": congela na 1ª leitura
-  posicao = { lat, lon, prec };
-  if (!pontos.length) criarPontos();
-}
-function ligarGPS() {
-  if (SIMULAR) { aplicarPosicao(-23.21700, -46.89220, 0); return; }  // no campo, ao sul dos prédios
-  const ler = () => navigator.geolocation.getCurrentPosition(
-    (p) => aplicarPosicao(p.coords.latitude, p.coords.longitude, p.coords.accuracy),
-    (e) => { if (!posicao) status.textContent = "Erro de GPS: " +
+function ligarGPS(primeira) {
+  const usar = (p) => { posicao = { lat: p.coords.latitude, lon: p.coords.longitude, prec: p.coords.accuracy }; };
+  if (primeira) usar(primeira);
+  const ler = () => navigator.geolocation.getCurrentPosition(usar, (e) => {
+    if (!posicao) status.textContent = "Erro de GPS: " +
       ({ 1: "localização bloqueada (cadeado → Permissões → Localização)",
-         2: "ligue a localização do celular", 3: "GPS demorou; vá para um lugar aberto" }[e.code] || e.message); },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
-  if (window.posicaoInicial) {
-    const c = window.posicaoInicial.coords; aplicarPosicao(c.latitude, c.longitude, c.accuracy);
-  }
+         2: "ligue a localização do celular", 3: "GPS demorou; vá para um lugar aberto" }[e.code] || e.message);
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
   ler(); setInterval(ler, 3000);
 }
 
-// ---------------------------------------------------------------- pontos
-function criarPontos() {
-  let lista = carregarPontos().filter((p) => p.lat && p.lon);
-  if (MODO_TESTE) {   // espalha os prédios em círculo a 60-120 m de você
-    const base = carregarPontos();
-    lista = base.map((p, i) => {
-      const ang = (i / base.length) * 2 * Math.PI, dist = 60 + (i % 3) * 30;
-      return { nome: p.nome,
-               lat: posicao.lat + dist * Math.cos(ang) / 111320,
-               lon: posicao.lon + dist * Math.sin(ang) / (111320 * Math.cos(rad(posicao.lat))) };
-    });
-  }
-  pontos = lista.map((p) => {
+// ---------------------------------------------------------------- marcadores
+// Um elemento (pino + seta) por ponto, criado uma vez e reaproveitado
+const elementos = new Map();
+function elementoDe(ponto) {
+  if (!elementos.has(ponto.nome)) {
     const el = document.createElement("div");
     el.className = "marcador";
-    el.innerHTML = `<span class="nome">${p.nome}<span class="dist"></span></span><img src="modelos/pino.png" alt="">`;
-    camada.appendChild(el);
+    el.innerHTML = `<span class="nome">${ponto.nome}<span class="dist"></span></span><img src="modelos/pino.png" alt="">`;
     const seta = document.createElement("div");
     seta.className = "seta";
-    camada.appendChild(seta);
-    return { ...p, el, seta };
-  });
+    camada.append(el, seta);
+    elementos.set(ponto.nome, { el, seta });
+  }
+  return elementos.get(ponto.nome);
 }
 
-// ---------------------------------------------------------------- desenho (60x por segundo)
+// ---------------------------------------------------------------- desenho (a cada quadro)
 function desenhar() {
   requestAnimationFrame(desenhar);
-  if (!posicao || !pontos.length) return;
+  if (!posicao) return;
 
   const W = innerWidth, H = innerHeight;
-  const campo = W < H ? 55 : 75;      // campo de visão horizontal aproximado da câmera (graus)
+  const campo = W < H ? 55 : 75;   // campo de visão horizontal aproximado da câmera (graus)
   const semBussola = rumo == null || (RUMO_FIXO == null && Date.now() - ultimaBussola > 3000);
 
-  const itens = pontos.map((p) => ({
-    p, d: distanciaMetros(posicao.lat, posicao.lon, p.lat, p.lon),
+  // Longe: só o campus. Perto: cada prédio.
+  const dCampus = distanciaMetros(posicao.lat, posicao.lon, CAMPUS.lat, CAMPUS.lon);
+  const ativos = dCampus > DISTANCIA_SEPARAR_PREDIOS ? [CAMPUS] : PONTOS;
+
+  // esconde o que não está ativo
+  elementos.forEach((v, nome) => {
+    if (!ativos.some((p) => p.nome === nome)) { v.el.style.display = "none"; v.seta.style.display = "none"; }
+  });
+
+  const itens = ativos.map((p) => ({
+    p, ...elementoDe(p),
+    d: distanciaMetros(posicao.lat, posicao.lon, p.lat, p.lon),
     az: azimute(posicao.lat, posicao.lon, p.lat, p.lon),
   })).sort((a, b) => a.d - b.d);
 
   let esq = 0, dir = 0;
   const visiveis = [];
   itens.forEach((it) => {
-    const { p, d, az } = it;
-    p.el.querySelector(".dist").textContent = `${Math.round(d)} m`;
-    if (semBussola) { p.el.style.display = "none"; p.seta.style.display = "none"; return; }
-
-    const dif = diferenca(az, rumo);                       // negativo = à esquerda
+    it.el.querySelector(".dist").textContent = textoDistancia(it.d);
+    if (semBussola) { it.el.style.display = "none"; it.seta.style.display = "none"; return; }
+    const dif = diferenca(it.az, rumo);
     if (Math.abs(dif) <= campo / 2) {
-      // dentro da tela: posição horizontal proporcional ao ângulo
-      it.x = W / 2 + (dif / (campo / 2)) * (W / 2);
+      it.x = W / 2 + (dif / (campo / 2)) * (W / 2);   // posição horizontal proporcional ao ângulo
       visiveis.push(it);
-      p.seta.style.display = "none";
+      it.seta.style.display = "none";
     } else {
-      // fora da tela: seta na borda indicando para que lado virar
-      p.el.style.display = "none";
+      it.el.style.display = "none";
       const lado = dif < 0 ? "esq" : "dir";
       const n = lado === "esq" ? esq++ : dir++;
-      p.seta.className = "seta " + lado;
-      p.seta.style.display = "block";
-      p.seta.style.top = (70 + n * 38) + "px";
-      p.seta.textContent = lado === "esq"
-        ? `◀ ${p.nome} · ${Math.round(d)} m` : `${p.nome} · ${Math.round(d)} m ▶`;
+      it.seta.className = "seta " + lado;
+      it.seta.style.display = "block";
+      it.seta.style.top = (70 + n * 38) + "px";
+      it.seta.textContent = lado === "esq"
+        ? `◀ ${it.p.nome} · ${textoDistancia(it.d)}` : `${it.p.nome} · ${textoDistancia(it.d)} ▶`;
     }
   });
 
-  // Pinos da esquerda para a direita, em 3 alturas alternadas para os nomes não encavalarem
+  // Da esquerda para a direita, em 3 alturas alternadas (nomes não encavalam).
+  // Tamanho: grande perto (≈100 m), pequeno longe (vários km).
   visiveis.sort((a, b) => a.x - b.x).forEach((it, i) => {
-    const { p, d } = it;
-    const escala = Math.max(0.65, Math.min(1.3, 1.4 - d / 400));
-    const y = H * 0.78 - (i % 3) * H * 0.14;
-    p.el.style.display = "block";
-    p.el.style.left = it.x + "px"; p.el.style.top = y + "px";
-    p.el.style.transform = `translate(-50%, -100%) scale(${escala})`;
-    p.el.style.transformOrigin = "50% 100%";
-    p.el.style.zIndex = String(1000 - Math.round(d));
+    const escala = Math.max(0.45, Math.min(1.3, 1.3 - Math.log10(Math.max(it.d, 50) / 50) * 0.35));
+    it.el.style.display = "block";
+    it.el.style.left = it.x + "px";
+    it.el.style.top = (H * 0.8 - (i % 3) * H * 0.18) + "px";
+    it.el.style.transform = `translate(-50%, -100%) scale(${escala})`;
+    it.el.style.zIndex = String(10 - (i % 3));   // o de baixo fica por cima: nenhum nome some
   });
-  const naTela = visiveis.length;
 
-  const modo = MODO_TESTE ? " — MODO TESTE" : SIMULAR ? " — SIMULADO" : "";
-  const prec = posicao.prec != null ? `±${Math.round(posicao.prec)} m` : "";
-  status.innerHTML = `GPS ${prec}${modo} — mais perto: <b>${itens[0].p.nome}</b> (${Math.round(itens[0].d)} m)`;
+  const prec = posicao.prec != null ? ` ±${Math.round(posicao.prec)} m` : "";
+  status.innerHTML = `GPS${prec} — <b>${itens[0].p.nome}</b> a ${textoDistancia(itens[0].d)}`;
   detalhe.textContent = semBussola
     ? "Bússola sem resposta: mexa o celular em 8; no Android, libere 'Sensores de movimento' do site."
-    : `Apontando para ${Math.round(rumo)}° · ${naTela} prédio(s) na tela`;
+    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela`;
 }
 
 // ---------------------------------------------------------------- botão INICIAR
 const msg = document.getElementById("msgInicio");
 document.getElementById("btnIniciar").onclick = async () => {
-  // 1. Movimento/bússola (iPhone só pergunta dentro de um toque)
+  // 1. Movimento/bússola (o iPhone só pergunta dentro de um toque)
   try {
     if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) {
       await DeviceOrientationEvent.requestPermission();
@@ -261,27 +235,24 @@ document.getElementById("btnIniciar").onclick = async () => {
   // 2. Câmera traseira
   msg.textContent = "Abrindo a câmera...";
   try {
-    const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-    document.getElementById("video").srcObject = s;
+    document.getElementById("video").srcObject =
+      await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
   } catch (e) {
     msg.textContent = "Câmera bloqueada (" + e.name + "). Libere no cadeado ao lado do endereço e recarregue.";
     return;
   }
 
   // 3. Localização
-  const comecar = () => {
-    document.getElementById("inicio").remove();
-    ligarBussola(); ligarGPS(); desenhar();
-  };
-  if (SIMULAR) return comecar();
   msg.textContent = "Pedindo a localização...";
-  navigator.geolocation.getCurrentPosition(
-    (p) => { window.posicaoInicial = p; comecar(); },
-    (e) => { msg.textContent = ({
+  navigator.geolocation.getCurrentPosition((p) => {
+    document.getElementById("inicio").remove();
+    ligarBussola(); ligarGPS(p); desenhar();
+  }, (e) => {
+    msg.textContent = ({
       1: "Localização bloqueada. Toque no cadeado ao lado do endereço → Permissões → Localização → Permitir. Depois recarregue.",
       2: "Localização indisponível. Ligue a localização (GPS) do celular e tente de novo.",
-      3: "A localização demorou. Vá para perto de uma janela e toque em INICIAR de novo." }[e.code] || e.message); },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+      3: "A localização demorou. Vá para perto de uma janela e toque em INICIAR de novo." }[e.code] || e.message);
+  }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
 };
 </script>
 </body>

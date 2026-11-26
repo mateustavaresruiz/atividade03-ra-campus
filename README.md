@@ -1,35 +1,24 @@
 # RA Campus Anchieta — Atividade 03 (Realidade Aumentada Markerless)
 
-App web de realidade aumentada por GPS: mostra um pino (modelo `map_pin.fbx`) sobre cada
-prédio do campus Prof. Pedro C. Fornari (UniAnchieta, Jundiaí) com o nome logo acima.
+App web de realidade aumentada por localização, como um "Maps" na câmera: aponte o celular
+e veja um pino com o nome e a distância de cada prédio do campus Prof. Pedro C. Fornari
+(UniAnchieta, Jundiaí). Quando o prédio está fora da tela, uma seta na borda mostra para
+que lado virar.
 
-## Páginas
+- Longe do campus (mais de 1 km): um pino só, **UniAnchieta**, com a distância em km.
+- Perto: um pino por ponto — Prédios 1 a 4, Biblioteca, Prédio Administrativo e Anfiteatro.
 
-| Endereço | Uso |
-|---|---|
-| `index.html` | App no campus (GPS real) |
-| `index.html?teste=1` | Espalha os pontos em volta de onde você está (testar em casa) |
-| `index.html?simular=1` | Finge estar no campus (testar no computador) |
-| `calibrar.html` | Ajusta a posição de cada prédio no local e avisa pontos a menos de 50 m |
+App: https://mateustavaresruiz.github.io/atividade03-ra-campus/
 
 ## Arquivos
 
-- `index.html` — cena A-Frame + AR.js, painel com distâncias
-- `componentes.js` — componentes `marcador-pino`, `rotulo` e `gerenciador-pontos`
-- `pontos.js` — coordenadas dos prédios (OpenStreetMap) e cálculo de distância
-- `calibrar.html` — calibração no campus
+- `index.html` — câmera, GPS, bússola, cálculo de direção e desenho dos pinos e setas
+- `pontos.js` — coordenadas dos prédios (OpenStreetMap), ponto do campus e distância
 - `modelos/map_pin.fbx` — marcador fornecido pelo professor
+- `modelos/pino.png` — imagem do mesmo marcador, usada na tela
+- `docs/` — documentação (PDF), link do projeto e roteiro do vídeo
 
-## Rodar
+## Usar
 
-Câmera e GPS só funcionam em HTTPS (ou `localhost`). Publicado no GitHub Pages:
-abra o link no celular (Chrome no Android ou Safari no iPhone) e permita câmera,
-localização e sensores de movimento.
-
-Teste local no computador:
-
-```
-python -m http.server 8000
-```
-
-e abra `http://localhost:8000/index.html?simular=1`.
+Abra o link no celular (Chrome no Android, Safari no iPhone), toque em INICIAR e permita
+câmera, localização e movimento. Câmera e GPS exigem HTTPS, que o GitHub Pages fornece.

@@ -1,10 +1,7 @@
-// Pontos mapeados pelo app (prédios do mapa + anfiteatro).
-// Latitude/longitude em graus decimais. Para corrigir no local, use calibrar.html:
-// ela salva as posições no celular e o index.html passa a usá-las.
-//
+// Pontos mapeados pelo app: prédios do mapa do enunciado + anfiteatro.
 // Fonte: centro de cada prédio no OpenStreetMap (campus Prof. Pedro C. Fornari,
 // Av. Dr. Adoniro Ladeira, Jundiaí). A Biblioteca não tem nome no OSM; é o prédio
-// colado ao Prédio 2, como no mapa do enunciado. Confirme no campus com calibrar.html.
+// colado ao Prédio 2, como no mapa do enunciado.
 const PONTOS = [
   { nome: "Prédio 1",              lat: -23.214412, lon: -46.891534 },
   { nome: "Prédio 2",              lat: -23.212863, lon: -46.892935 },
@@ -15,16 +12,17 @@ const PONTOS = [
   { nome: "Anfiteatro",            lat: -23.215327, lon: -46.891176 },
 ];
 
-// Lê os pontos calibrados no celular (se houver); senão usa os de cima.
-function carregarPontos() {
-  try {
-    const salvos = JSON.parse(localStorage.getItem("pontos_calibrados") || "null");
-    if (Array.isArray(salvos) && salvos.length) return salvos;
-  } catch (e) { /* sem armazenamento: usa os padrões */ }
-  return PONTOS;
-}
+// Ponto único usado quando você está longe (centro dos prédios acima)
+const CAMPUS = {
+  nome: "UniAnchieta",
+  lat: PONTOS.reduce((s, p) => s + p.lat, 0) / PONTOS.length,
+  lon: PONTOS.reduce((s, p) => s + p.lon, 0) / PONTOS.length,
+};
 
-// Distância em metros entre duas coordenadas (fórmula de Haversine).
+// A partir desta distância do campus, mostra só o pino "UniAnchieta"
+const DISTANCIA_SEPARAR_PREDIOS = 1000;   // metros
+
+// Distância em metros entre duas coordenadas (fórmula de Haversine)
 function distanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000, rad = Math.PI / 180;
   const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
