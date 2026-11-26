@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>RA Campus Anchieta</title>
-  <script src="pontos.js?v=9"></script>
+  <script src="pontos.js?v=10"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
@@ -34,6 +34,11 @@
     }
     .seta.esq { left: 6px; } .seta.dir { right: 6px; }
 
+    #botaoModo {
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 3000;
+      background: rgba(0, 40, 90, .9); color: #fff; border: 2px solid #ffd23f; border-radius: 20px;
+      padding: 10px 18px; font-size: 15px; font-weight: bold;
+    }
     #inicio {
       position: fixed; inset: 0; z-index: 5000; background: #0b2a4a; color: #fff;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -55,6 +60,8 @@
     <div id="detalhe"></div>
   </div>
 
+  <button id="botaoModo"></button>
+
   <div id="inicio">
     <img src="modelos/pino.png" alt="">
     <h1>RA Campus Anchieta</h1>
@@ -73,17 +80,25 @@
 //   - Dentro do campo de visão: desenha o pino com nome e distância naquele ponto da tela
 //     (menor quando longe, maior quando perto).
 //   - Fora do campo de visão: seta na borda (◀ ou ▶) mostrando para que lado virar.
-//   Longe do campus (> 1 km) aparece um pino só, "UniAnchieta"; perto, um por prédio.
+//   Longe do campus (> 1 km) aparece um pino só, "UniAnchieta"; perto, um por prédio
+//   (separa sozinho ao chegar). O botão embaixo alterna entre os dois.
 // =====================================================================================
 const RUMO_FIXO = new URLSearchParams(location.search).get("rumo");  // só para testar no PC
 
 const status = document.getElementById("status");
 const detalhe = document.getElementById("detalhe");
 const camada = document.getElementById("camada");
+const botaoModo = document.getElementById("botaoModo");
+// Alterna entre "todos os prédios" e "só a faculdade"
+botaoModo.onclick = () => {
+  modo = botaoModo.textContent.startsWith("Mostrar todos") ? "todos" : "campus";
+};
 
 let posicao = null;   // { lat, lon, prec }
-let rumo = null;      // para onde a câmera aponta (0 = norte, 90 = leste)
+let rumo = null;      // direção usada na tela (0 = norte, 90 = leste)
+let rumoSensor = null; // direção lida dos sensores, já filtrada
 let ultimaBussola = 0;
+let modo = "auto";    // "auto" (longe: faculdade; perto: prédios), "todos" ou "campus"
 
 // ---------------------------------------------------------------- matemática
 const rad = (g) => g * Math.PI / 180, grau = (r) => r * 180 / Math.PI;
@@ -115,8 +130,9 @@ const textoDistancia = (d) =>
 function novaLeitura(h) {
   if (h == null || isNaN(h)) return;
   ultimaBussola = Date.now();
-  // suaviza (média circular) para o pino não tremer
-  rumo = rumo == null ? h : (rumo + diferenca(h, rumo) * 0.25 + 360) % 360;
+  // filtro forte (média circular): absorve as tremidas da mão e do sensor
+  rumoSensor = rumoSensor == null ? h : (rumoSensor + diferenca(h, rumoSensor) * 0.06 + 360) % 360;
+  if (rumo == null) rumo = rumoSensor;
 }
 function ligarBussola() {
   if (RUMO_FIXO != null) { rumo = +RUMO_FIXO; return; }
@@ -165,10 +181,16 @@ function desenhar() {
   const W = innerWidth, H = innerHeight;
   const campo = W < H ? 55 : 75;   // campo de visão horizontal aproximado da câmera (graus)
   const semBussola = rumo == null || (RUMO_FIXO == null && Date.now() - ultimaBussola > 3000);
+  // Só mexe os pinos se a direção mudou mais de 2°: mexidas pequenas não tiram o pino do lugar
+  if (rumoSensor != null && Math.abs(diferenca(rumoSensor, rumo)) > 2) {
+    rumo = (rumo + diferenca(rumoSensor, rumo) * 0.15 + 360) % 360;
+  }
 
-  // Longe: só o campus. Perto: cada prédio.
+  // Automático: longe só a faculdade, perto cada prédio. O botão pode forçar um dos dois.
   const dCampus = distanciaMetros(posicao.lat, posicao.lon, CAMPUS.lat, CAMPUS.lon);
-  const ativos = dCampus > DISTANCIA_SEPARAR_PREDIOS ? [CAMPUS] : PONTOS;
+  const soCampus = modo === "campus" || (modo === "auto" && dCampus > DISTANCIA_SEPARAR_PREDIOS);
+  const ativos = soCampus ? [CAMPUS] : PONTOS;
+  botaoModo.textContent = soCampus ? "Mostrar todos os prédios" : "Mostrar só a faculdade";
 
   // esconde o que não está ativo
   elementos.forEach((v, nome) => {
@@ -203,15 +225,22 @@ function desenhar() {
     }
   });
 
-  // Da esquerda para a direita, em 3 alturas alternadas (nomes não encavalam).
+  // Da esquerda para a direita: cada nome vai para o primeiro "degrau" livre,
+  // assim prédios na mesma direção (comum de longe) ficam empilhados sem se cobrir.
   // Tamanho: grande perto (≈100 m), pequeno longe (vários km).
-  visiveis.sort((a, b) => a.x - b.x).forEach((it, i) => {
-    const escala = Math.max(0.45, Math.min(1.3, 1.3 - Math.log10(Math.max(it.d, 50) / 50) * 0.35));
+  const degraus = [];   // borda direita ocupada em cada degrau
+  visiveis.sort((a, b) => a.x - b.x).forEach((it) => {
+    const escala = Math.max(0.5, Math.min(1.3, 1.3 - Math.log10(Math.max(it.d, 50) / 50) * 0.35));
     it.el.style.display = "block";
+    const largura = it.el.querySelector(".nome").offsetWidth * escala;
+    const altura = it.el.querySelector(".nome").offsetHeight * escala;
+    let n = degraus.findIndex((dir) => it.x - largura / 2 > dir + 6);
+    if (n === -1) { n = degraus.length; degraus.push(0); }
+    degraus[n] = it.x + largura / 2;
     it.el.style.left = it.x + "px";
-    it.el.style.top = (H * 0.8 - (i % 3) * H * 0.18) + "px";
+    it.el.style.top = (H * 0.82 - n * (altura + 8)) + "px";
     it.el.style.transform = `translate(-50%, -100%) scale(${escala})`;
-    it.el.style.zIndex = String(10 - (i % 3));   // o de baixo fica por cima: nenhum nome some
+    it.el.style.zIndex = String(50 - n);   // o de baixo fica por cima: nenhum nome some
   });
 
   const prec = posicao.prec != null ? ` ±${Math.round(posicao.prec)} m` : "";
