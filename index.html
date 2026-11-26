@@ -13,8 +13,8 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/curves/NURBSCurve.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/loaders/FBXLoader.js"></script>
 
-  <script src="pontos.js?v=6"></script>
-  <script src="componentes.js?v=6"></script>
+  <script src="pontos.js?v=7"></script>
+  <script src="componentes.js?v=7"></script>
 
   <style>
     body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
@@ -51,12 +51,13 @@
     <p>O app vai pedir <b>localização</b>, <b>câmera</b> e <b>movimento</b>.<br>Toque em <b>Permitir</b> em todos.</p>
     <button id="btnIniciar">INICIAR</button>
     <div class="msg" id="msgInicio"></div>
-    <small>v6</small>
+    <small>v7</small>
   </div>
 
   <div id="painel">
-    <div id="status">v6 — Aguardando GPS...</div>
+    <div id="status">v7 — Aguardando GPS...</div>
     <div id="lista"></div>
+    <div id="debug" style="color:#ffd23f;font-size:13px"></div>
   </div>
   <div id="rodape">
     <a href="index.html">Campus</a>
@@ -81,7 +82,30 @@
     const msg = document.getElementById("msgInicio");
 
     function abrirCena() {
-      document.body.appendChild(document.getElementById("cena").content.cloneNode(true));
+      const q = new URLSearchParams(location.search);
+      const frag = document.getElementById("cena").content.cloneNode(true);
+      // ?video=textura -> o AR.js desenha o vídeo como textura (alternativa para alguns celulares)
+      if (q.get("video") === "textura") {
+        frag.querySelector("a-scene").setAttribute("arjs",
+          "sourceType: webcam; videoTexture: true; debugUIEnabled: false");
+      }
+      // ?debug=1 -> cubo vermelho fixo na frente da câmera + rumo da bússola no painel
+      if (q.has("debug")) {
+        const cubo = document.createElement("a-box");
+        cubo.setAttribute("position", "0 -0.9 -3");
+        cubo.setAttribute("scale", "0.6 0.6 0.6");
+        cubo.setAttribute("color", "red");
+        frag.querySelector("a-camera").appendChild(cubo);
+        setInterval(() => {
+          const c = document.querySelector("a-camera");
+          if (!c) return;
+          const r = c.object3D.rotation;
+          const graus = (v) => Math.round(THREE.MathUtils.radToDeg(v));
+          document.getElementById("debug").textContent =
+            `rumo ${graus(r.y)}° · inclinação ${graus(r.x)}°`;
+        }, 500);
+      }
+      document.body.appendChild(frag);
       document.getElementById("inicio").remove();
     }
 

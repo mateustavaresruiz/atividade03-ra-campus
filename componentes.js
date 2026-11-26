@@ -112,6 +112,8 @@ AFRAME.registerComponent("gerenciador-pontos", {
       // e o AR.js descarta leituras com precisão pior que 100 m (comum em casa).
       const aplicar = (p) => {
         const { latitude, longitude, accuracy } = p.coords;
+        // Modo teste: congela na primeira leitura (em casa o GPS "pula" centenas de metros)
+        if (MODO_TESTE && this.criados) return;
         this.precisao = accuracy;
         // 1) entrega a posição ao AR.js (move a câmera virtual)
         camera.setAttribute("gps-new-camera",
@@ -133,7 +135,7 @@ AFRAME.registerComponent("gerenciador-pontos", {
       // Começa com a posição que o botão INICIAR já obteve (se houver).
       // Se a cena já terminou de carregar, começa na hora; senão, espera o "loaded".
       const comecar = () => {
-        this.status.textContent = "v6 — GPS recebido, criando os pontos...";
+        this.status.textContent = "v7 — GPS recebido, criando os pontos...";
         if (window.posicaoInicial) aplicar(window.posicaoInicial);
         ler();
         setInterval(ler, 3000);
