@@ -7,7 +7,7 @@ O enunciado pede: **explicação do grupo sobre a aplicação + filmagem dos pon
   A câmera do app mostra o ambiente com os pinos por cima, então a gravação já sai certa.
 - Nas opções do gravador, ligue o **som do microfone** — assim a sua explicação entra no vídeo.
 - Celular **em pé** (retrato) e com a rotação automática travada.
-- No painel de cima deve aparecer **"v14"**. Se não aparecer, feche a aba e abra o link de novo.
+- No painel de cima deve aparecer **"v15"**. Se não aparecer, feche a aba e abra o link de novo.
 - Fique a **pelo menos 50 m** dos prédios, em lugar aberto (o GPS fica melhor).
 
 ## Parte 1 — Explicação (1 min, pode falar já com o app aberto)

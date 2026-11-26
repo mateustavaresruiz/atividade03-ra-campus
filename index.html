@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>RA Campus Anchieta</title>
-  <script src="pontos.js?v=14"></script>
+  <script src="pontos.js?v=15"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
@@ -249,10 +249,12 @@ function desenhar() {
   status.innerHTML = `GPS${prec} — <b>${itens[0].p.nome}</b> a ${textoDistancia(itens[0].d)}`;
   // GPS ruim (dentro de prédio ou localização "aproximada"): avisa, porque as distâncias erram
   if (posicao.prec > 50) status.innerHTML = `<span style="color:#ff6b6b">⚠ GPS impreciso (±${Math.round(posicao.prec)} m)</span>: ` +
-    `vá para um lugar aberto e ative a localização precisa`;
+    (posicao.prec > 500
+      ? `o Chrome está com localização APROXIMADA. Configurações → Apps → Chrome → Permissões → Localização → ligue "Usar localização precisa"`
+      : `vá para um lugar aberto e espere alguns segundos`);
   detalhe.textContent = semBussola
     ? "Bússola sem resposta: mexa o celular em 8; no Android, libere 'Sensores de movimento' do site."
-    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela · v14`;
+    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela · v15`;
 }
 
 // ---------------------------------------------------------------- botão INICIAR
@@ -285,7 +287,7 @@ document.getElementById("btnIniciar").onclick = async () => {
       1: "Localização bloqueada. Toque no cadeado ao lado do endereço → Permissões → Localização → Permitir. Depois recarregue.",
       2: "Localização indisponível. Ligue a localização (GPS) do celular e tente de novo.",
       3: "A localização demorou. Vá para perto de uma janela e toque em INICIAR de novo." }[e.code] || e.message);
-  }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+  }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 };
 </script>
 </body>
