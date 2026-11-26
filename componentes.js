@@ -101,17 +101,25 @@ AFRAME.registerComponent("gerenciador-pontos", {
     // Serve para testar no computador e mostrar o app fora do campus.
     this.precisao = null;
     if (SIMULAR) {
-      this.el.addEventListener("loaded", () => camera.setAttribute("gps-new-camera",
-        { simulateLatitude: -23.21700, simulateLongitude: -46.89220 }));
+      const simular = () => camera.setAttribute("gps-new-camera",
+        { simulateLatitude: -23.21700, simulateLongitude: -46.89220 });
+      if (this.el.hasLoaded) setTimeout(simular, 0);
+      else this.el.addEventListener("loaded", simular);
       this.precisao = 0;
     } else if (navigator.geolocation) {
       // Nós mesmos lemos o GPS a cada 3 s e entregamos a posição ao AR.js.
       // Motivos: em alguns celulares o watchPosition (usado pelo AR.js) nunca responde,
       // e o AR.js descarta leituras com precisão pior que 100 m (comum em casa).
       const aplicar = (p) => {
-        this.precisao = p.coords.accuracy;
+        const { latitude, longitude, accuracy } = p.coords;
+        this.precisao = accuracy;
+        // 1) entrega a posição ao AR.js (move a câmera virtual)
         camera.setAttribute("gps-new-camera",
-          { simulateLatitude: p.coords.latitude, simulateLongitude: p.coords.longitude });
+          { simulateLatitude: latitude, simulateLongitude: longitude });
+        // 2) não depende do aviso do AR.js: cria os pinos e atualiza o painel aqui mesmo
+        this.posicao = { lat: latitude, lon: longitude };
+        if (!this.criados) this.criarPontos(latitude, longitude);
+        this.atualizarPainel();
       };
       const erro = (e) => {
         const motivos = { 1: "permissão de localização negada — libere no cadeado ao lado do endereço",
@@ -122,12 +130,16 @@ AFRAME.registerComponent("gerenciador-pontos", {
       const ler = () => navigator.geolocation.getCurrentPosition(aplicar, erro,
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
 
-      // Começa com a posição que o botão INICIAR já obteve (se houver)
-      this.el.addEventListener("loaded", () => {
+      // Começa com a posição que o botão INICIAR já obteve (se houver).
+      // Se a cena já terminou de carregar, começa na hora; senão, espera o "loaded".
+      const comecar = () => {
+        this.status.textContent = "v6 — GPS recebido, criando os pontos...";
         if (window.posicaoInicial) aplicar(window.posicaoInicial);
         ler();
         setInterval(ler, 3000);
-      });
+      };
+      if (this.el.hasLoaded) setTimeout(comecar, 0);
+      else this.el.addEventListener("loaded", comecar);
     } else {
       this.status.textContent = "Este navegador não tem GPS (geolocalização).";
     }
