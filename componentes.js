@@ -106,8 +106,26 @@ AFRAME.registerComponent("gerenciador-pontos", {
       this.precisao = 0;
     } else if (navigator.geolocation) {
       // O evento do AR.js não traz a precisão; lemos à parte para mostrar no painel
-      navigator.geolocation.watchPosition((p) => { this.precisao = p.coords.accuracy; },
-        () => {}, { enableHighAccuracy: true });
+      navigator.geolocation.watchPosition((p) => {
+        this.precisao = p.coords.accuracy;
+        if (this.criados) return;
+        if (MODO_TESTE) {
+          // O AR.js ignora GPS com precisão pior que 100 m (comum dentro de casa).
+          // No modo teste, usamos a posição que tivermos, seja qual for a precisão.
+          camera.setAttribute("gps-new-camera",
+            { simulateLatitude: p.coords.latitude, simulateLongitude: p.coords.longitude });
+        } else {
+          this.status.textContent =
+            `Aguardando GPS mais preciso... agora ±${Math.round(p.coords.accuracy)} m (precisa de até 100 m; vá para um lugar aberto)`;
+        }
+      }, (erro) => {
+        const motivos = { 1: "permissão de localização negada — libere nas configurações do navegador",
+                          2: "localização indisponível — ligue o GPS/localização do celular",
+                          3: "o GPS demorou para responder — tente em lugar aberto" };
+        this.status.textContent = "Erro de GPS: " + (motivos[erro.code] || erro.message);
+      }, { enableHighAccuracy: true, timeout: 30000 });
+    } else {
+      this.status.textContent = "Este navegador não tem GPS (geolocalização).";
     }
 
   },
