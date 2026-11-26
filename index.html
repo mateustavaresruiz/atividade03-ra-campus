@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>RA Campus Anchieta</title>
-  <script src="pontos.js?v=15"></script>
+  <script src="pontos.js?v=16"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
@@ -34,6 +34,9 @@
     }
     .seta.esq { left: 6px; } .seta.dir { right: 6px; }
 
+    #manual { position: fixed; left: 8px; right: 8px; bottom: 70px; z-index: 3000; display: none;
+              background: rgba(0, 40, 90, .92); color: #fff; padding: 8px; border-radius: 10px; font-size: 13px; }
+    #manual select { width: 100%; font-size: 15px; padding: 6px; margin-top: 4px; }
     #inicio {
       position: fixed; inset: 0; z-index: 5000; background: #0b2a4a; color: #fff;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -49,6 +52,8 @@
 <body>
   <video id="video" autoplay playsinline muted></video>
   <div id="camada"></div>
+  <div id="manual">GPS fraco aqui. Escolha onde você está (usado até o GPS melhorar):
+    <select id="ondeEstou"><option value="">— escolher —</option></select></div>
 
   <div id="painel">
     <div id="status">Aguardando GPS...</div>
@@ -146,9 +151,30 @@ function ligarBussola() {
   });
 }
 
+// ---------------------------------------------------------------- posição manual
+// Dentro de prédio o GPS do celular pode errar centenas de metros. Nesse caso a pessoa
+// escolhe onde está; assim que o GPS ficar bom (±30 m ou menos) ele volta a ser usado.
+let manual = null;
+const LUGARES = [
+  { nome: "Pátio entre o Administrativo e o Prédio 3", lat: -23.21376, lon: -46.89251 },
+  { nome: "Entrada (antes do Anfiteatro)", lat: -23.21596, lon: -46.89118 },
+  ...PONTOS.map((p) => ({ nome: "Ao lado: " + p.nome, lat: p.lat, lon: p.lon })),
+];
+const ondeEstou = document.getElementById("ondeEstou");
+LUGARES.forEach((l, i) => ondeEstou.add(new Option(l.nome, i)));
+ondeEstou.onchange = () => {
+  if (ondeEstou.value === "") return;
+  manual = LUGARES[+ondeEstou.value];
+  posicao = { lat: manual.lat, lon: manual.lon, prec: null, manual: true };
+};
+
 // ---------------------------------------------------------------- GPS
 function ligarGPS(primeira) {
-  const usar = (p) => { posicao = { lat: p.coords.latitude, lon: p.coords.longitude, prec: p.coords.accuracy }; };
+  const usar = (p) => {
+    if (manual && p.coords.accuracy > 30) return;   // GPS ainda ruim: mantém o lugar escolhido
+    manual = null;
+    posicao = { lat: p.coords.latitude, lon: p.coords.longitude, prec: p.coords.accuracy };
+  };
   if (primeira) usar(primeira);
   const ler = () => navigator.geolocation.getCurrentPosition(usar, (e) => {
     if (!posicao) status.textContent = "Erro de GPS: " +
@@ -211,7 +237,7 @@ function desenhar() {
       const n = lado === "esq" ? esq++ : dir++;
       it.seta.className = "seta " + lado;
       it.seta.style.display = "block";
-      it.seta.style.top = ""; it.seta.style.bottom = (20 + n * 38) + "px";
+      it.seta.style.top = ""; it.seta.style.bottom = ((posicao.prec > 100 || manual ? 150 : 20) + n * 38) + "px";
       it.seta.textContent = lado === "esq"
         ? `◀ ${it.p.nome} · ${textoDistancia(it.d)}` : `${it.p.nome} · ${textoDistancia(it.d)} ▶`;
     }
@@ -248,13 +274,13 @@ function desenhar() {
   const prec = posicao.prec != null ? ` ±${Math.round(posicao.prec)} m` : "";
   status.innerHTML = `GPS${prec} — <b>${itens[0].p.nome}</b> a ${textoDistancia(itens[0].d)}`;
   // GPS ruim (dentro de prédio ou localização "aproximada"): avisa, porque as distâncias erram
-  if (posicao.prec > 50) status.innerHTML = `<span style="color:#ff6b6b">⚠ GPS impreciso (±${Math.round(posicao.prec)} m)</span>: ` +
-    (posicao.prec > 500
-      ? `o Chrome está com localização APROXIMADA. Configurações → Apps → Chrome → Permissões → Localização → ligue "Usar localização precisa"`
-      : `vá para um lugar aberto e espere alguns segundos`);
+  document.getElementById("manual").style.display = (posicao.prec > 100 || manual) ? "block" : "none";
+  if (manual) status.innerHTML = `Posição escolhida: <b>${manual.nome}</b> — ${itens[0].p.nome} a ${textoDistancia(itens[0].d)}`;
+  else if (posicao.prec > 50) status.innerHTML = `<span style="color:#ff6b6b">⚠ GPS impreciso (±${Math.round(posicao.prec)} m)</span>: ` +
+    `dentro de prédio o GPS não pega. Vá para um lugar aberto ou escolha embaixo onde você está.`;
   detalhe.textContent = semBussola
     ? "Bússola sem resposta: mexa o celular em 8; no Android, libere 'Sensores de movimento' do site."
-    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela · v15`;
+    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela · v16`;
 }
 
 // ---------------------------------------------------------------- botão INICIAR
