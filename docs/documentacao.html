@@ -33,6 +33,7 @@ da <b>bússola</b> (sensores de orientação) — é a chamada RA baseada em loc
 <li><b>Longe do campus</b> (mais de 1 km): um pino só, "UniAnchieta", com a distância em km.</li>
 <li><b>Perto</b>: um pino por ponto — Prédios 1 a 4, Biblioteca, Prédio Administrativo e Anfiteatro.</li>
 <li>O pino é pequeno quando o ponto está longe e cresce conforme a pessoa se aproxima.</li>
+<li>Um botão na parte de baixo alterna entre "todos os prédios" e "só a faculdade"; ao chegar a menos de 1 km, o app separa os prédios sozinho.</li>
 </ul>
 
 <h2>2. Tecnologias</h2>
@@ -101,7 +102,7 @@ o <code>watchPosition</code> não respondia, por isso foi usada a leitura perió
 <p>No Android, o evento <code>deviceorientationabsolute</code> dá os ângulos alpha/beta/gamma em relação
 ao norte; <code>rumoDaCamera()</code> converte esses ângulos na direção para onde a câmera traseira aponta
 (fórmula da especificação W3C). No iPhone, <code>webkitCompassHeading</code> já vem pronto.
-<code>novaLeitura()</code> suaviza o valor (média circular) para o pino não tremer.</p>
+<code>novaLeitura()</code> aplica um filtro forte (média circular) e, no desenho, a direção só muda quando a diferença passa de 2°: assim pequenas mexidas da mão não tiram o pino do lugar.</p>
 <h3>Cálculos — <code>azimute()</code>, <code>diferenca()</code></h3>
 <p><code>azimute()</code> calcula a direção (0° = norte, 90° = leste) da pessoa até o ponto.
 <code>diferenca()</code> dá o ângulo entre essa direção e a da câmera, de -180° a 180°
@@ -112,7 +113,7 @@ ao norte; <code>rumoDaCamera()</code> converte esses ângulos na direção para 
 <li>Se |diferença| ≤ metade do campo de visão (≈55° com o celular em pé), o pino vai para a posição
 horizontal proporcional ao ângulo: <code>x = centro + (diferença / (campo/2)) × (largura/2)</code>.</li>
 <li>Tamanho pela distância (escala logarítmica): grande a ~100 m, pequeno a vários km.</li>
-<li>Pinos lado a lado alternam 3 alturas para os nomes não se cobrirem.</li>
+<li>Nomes que ficariam um sobre o outro sobem para o próximo "degrau" livre (comum de longe, quando todos os prédios estão quase na mesma direção).</li>
 <li>Fora do campo de visão: seta na borda esquerda ou direita, com nome e distância.</li>
 <li>Painel no topo: precisão do GPS, ponto mais perto e direção da câmera em graus.</li>
 </ul>
