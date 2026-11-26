@@ -98,11 +98,15 @@ movimento (<code>DeviceOrientationEvent.requestPermission</code>, exigido no iPh
 <h3>GPS — <code>ligarGPS()</code></h3>
 <p>Lê a posição com <code>getCurrentPosition</code> a cada 3 segundos (alta precisão). Em alguns celulares
 o <code>watchPosition</code> não respondia, por isso foi usada a leitura periódica.</p>
-<h3>Bússola — <code>ligarBussola()</code>, <code>rumoDaCamera()</code>, <code>novaLeitura()</code></h3>
-<p>No Android, o evento <code>deviceorientationabsolute</code> dá os ângulos alpha/beta/gamma em relação
-ao norte; <code>rumoDaCamera()</code> converte esses ângulos na direção para onde a câmera traseira aponta
-(fórmula da especificação W3C). No iPhone, <code>webkitCompassHeading</code> já vem pronto.
-<code>novaLeitura()</code> aplica um filtro leve (média circular) que tira a tremida sem atrasar o movimento, e lê também a inclinação do celular (beta): em pé, beta ≈ 90°.</p>
+<h3>Bússola + giroscópio — <code>ligarBussola()</code>, <code>leituraGiro()</code>, <code>leituraBussola()</code></h3>
+<p><code>rumoDaCamera()</code> converte os ângulos alpha/beta/gamma na direção para onde a câmera traseira
+aponta (fórmula da especificação W3C). No Android há duas fontes: a <b>bússola</b>
+(<code>deviceorientationabsolute</code>), que sabe onde é o norte mas responde com atraso, e o
+<b>giroscópio</b> (<code>deviceorientation</code> relativo), que responde na hora mas não sabe onde é o
+norte. Usando só a bússola, o pino "acompanhava" a câmera antes de voltar ao lugar. Por isso o
+movimento vem do giroscópio e a bússola só corrige, devagar, a diferença até o norte
+(<code>correcao</code>). No iPhone, <code>webkitCompassHeading</code> já vem pronto.
+<code>novaLeitura()</code> lê também a inclinação do celular (beta): em pé, beta ≈ 90°.</p>
 <h3>Cálculos — <code>azimute()</code>, <code>diferenca()</code></h3>
 <p><code>azimute()</code> calcula a direção (0° = norte, 90° = leste) da pessoa até o ponto.
 <code>diferenca()</code> dá o ângulo entre essa direção e a da câmera, de -180° a 180°

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>RA Campus Anchieta</title>
-  <script src="pontos.js?v=11"></script>
+  <script src="pontos.js?v=12"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
@@ -127,22 +127,37 @@ const textoDistancia = (d) =>
   d >= 1000 ? (d / 1000).toFixed(1).replace(".", ",") + " km" : Math.round(d) + " m";
 
 // ---------------------------------------------------------------- bússola
+// A bússola (magnetômetro) sabe onde é o norte, mas no Android ela responde com atraso:
+// o pino "acompanha" a câmera e só depois volta. O giroscópio responde na hora, mas não
+// sabe onde é o norte. Então: o movimento vem do giroscópio e a bússola só corrige,
+// devagar, para onde fica o norte (a "correcao").
+let rumoGiro = null, ultimoGiro = 0, correcao = null;
+
 function novaLeitura(h, beta) {
   if (h == null || isNaN(h)) return;
   ultimaBussola = Date.now();
-  // filtro leve (média circular): tira a tremida sem atrasar o movimento
-  rumo = rumo == null ? h : (rumo + diferenca(h, rumo) * 0.35 + 360) % 360;
+  rumo = rumo == null ? h : (rumo + diferenca(h, rumo) * 0.5 + 360) % 360;
   // celular em pé: beta ≈ 90°. Acima disso a câmera aponta para cima.
-  if (beta != null) inclinacao += ((beta - 90) - inclinacao) * 0.35;
+  if (beta != null) inclinacao += ((beta - 90) - inclinacao) * 0.5;
+}
+function leituraGiro(h, beta) {          // rápido, sem norte
+  rumoGiro = h; ultimoGiro = Date.now();
+  if (correcao != null) novaLeitura((h + correcao + 360) % 360, beta);
+}
+function leituraBussola(h, beta) {       // com norte, mas atrasada
+  if (Date.now() - ultimoGiro > 500) { novaLeitura(h, beta); return; }  // sem giroscópio
+  const alvo = diferenca(h, rumoGiro);
+  correcao = correcao == null ? alvo : correcao + diferenca(alvo, correcao) * 0.02;
 }
 function ligarBussola() {
   if (RUMO_FIXO != null) { rumo = +RUMO_FIXO; return; }
-  window.addEventListener("deviceorientation", (e) => {          // iPhone
-    if (e.webkitCompassHeading != null) novaLeitura(e.webkitCompassHeading, e.beta);
-    else if (e.absolute) novaLeitura(rumoDaCamera(e.alpha, e.beta, e.gamma), e.beta);
+  window.addEventListener("deviceorientation", (e) => {
+    if (e.webkitCompassHeading != null) novaLeitura(e.webkitCompassHeading, e.beta);  // iPhone
+    else if (e.absolute) leituraBussola(rumoDaCamera(e.alpha, e.beta, e.gamma), e.beta);
+    else if (e.alpha != null) leituraGiro(rumoDaCamera(e.alpha, e.beta, e.gamma), e.beta); // Android
   });
   window.addEventListener("deviceorientationabsolute", (e) => {  // Android
-    novaLeitura(rumoDaCamera(e.alpha, e.beta, e.gamma), e.beta);
+    leituraBussola(rumoDaCamera(e.alpha, e.beta, e.gamma), e.beta);
   });
 }
 
@@ -249,7 +264,7 @@ function desenhar() {
   status.innerHTML = `GPS${prec} — <b>${itens[0].p.nome}</b> a ${textoDistancia(itens[0].d)}`;
   detalhe.textContent = semBussola
     ? "Bússola sem resposta: mexa o celular em 8; no Android, libere 'Sensores de movimento' do site."
-    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela`;
+    : `Apontando para ${Math.round(rumo)}° · ${visiveis.length} na tela · v12`;
 }
 
 // ---------------------------------------------------------------- botão INICIAR
