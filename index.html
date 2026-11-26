@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>RA Campus Anchieta</title>
-  <script src="pontos.js?v=10"></script>
+  <script src="pontos.js?v=11"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: #000; }
@@ -95,8 +95,8 @@ botaoModo.onclick = () => {
 };
 
 let posicao = null;   // { lat, lon, prec }
-let rumo = null;      // direção usada na tela (0 = norte, 90 = leste)
-let rumoSensor = null; // direção lida dos sensores, já filtrada
+let rumo = null;      // para onde a câmera aponta (0 = norte, 90 = leste)
+let inclinacao = 0;    // quanto a câmera aponta para cima (+) ou para baixo (-), em graus
 let ultimaBussola = 0;
 let modo = "auto";    // "auto" (longe: faculdade; perto: prédios), "todos" ou "campus"
 
@@ -127,21 +127,22 @@ const textoDistancia = (d) =>
   d >= 1000 ? (d / 1000).toFixed(1).replace(".", ",") + " km" : Math.round(d) + " m";
 
 // ---------------------------------------------------------------- bússola
-function novaLeitura(h) {
+function novaLeitura(h, beta) {
   if (h == null || isNaN(h)) return;
   ultimaBussola = Date.now();
-  // filtro forte (média circular): absorve as tremidas da mão e do sensor
-  rumoSensor = rumoSensor == null ? h : (rumoSensor + diferenca(h, rumoSensor) * 0.06 + 360) % 360;
-  if (rumo == null) rumo = rumoSensor;
+  // filtro leve (média circular): tira a tremida sem atrasar o movimento
+  rumo = rumo == null ? h : (rumo + diferenca(h, rumo) * 0.35 + 360) % 360;
+  // celular em pé: beta ≈ 90°. Acima disso a câmera aponta para cima.
+  if (beta != null) inclinacao += ((beta - 90) - inclinacao) * 0.35;
 }
 function ligarBussola() {
   if (RUMO_FIXO != null) { rumo = +RUMO_FIXO; return; }
   window.addEventListener("deviceorientation", (e) => {          // iPhone
-    if (e.webkitCompassHeading != null) novaLeitura(e.webkitCompassHeading);
-    else if (e.absolute) novaLeitura(rumoDaCamera(e.alpha, e.beta, e.gamma));
+    if (e.webkitCompassHeading != null) novaLeitura(e.webkitCompassHeading, e.beta);
+    else if (e.absolute) novaLeitura(rumoDaCamera(e.alpha, e.beta, e.gamma), e.beta);
   });
   window.addEventListener("deviceorientationabsolute", (e) => {  // Android
-    novaLeitura(rumoDaCamera(e.alpha, e.beta, e.gamma));
+    novaLeitura(rumoDaCamera(e.alpha, e.beta, e.gamma), e.beta);
   });
 }
 
@@ -181,10 +182,11 @@ function desenhar() {
   const W = innerWidth, H = innerHeight;
   const campo = W < H ? 55 : 75;   // campo de visão horizontal aproximado da câmera (graus)
   const semBussola = rumo == null || (RUMO_FIXO == null && Date.now() - ultimaBussola > 3000);
-  // Só mexe os pinos se a direção mudou mais de 2°: mexidas pequenas não tiram o pino do lugar
-  if (rumoSensor != null && Math.abs(diferenca(rumoSensor, rumo)) > 2) {
-    rumo = (rumo + diferenca(rumoSensor, rumo) * 0.15 + 360) % 360;
-  }
+  // Campo de visão vertical a partir do horizontal e do formato da tela
+  const campoV = grau(2 * Math.atan(Math.tan(rad(campo / 2)) * H / W));
+  // Linha do horizonte na tela: sobe quando a câmera aponta para baixo e desce quando
+  // aponta para cima. Os pinos ficam presos nela, como se estivessem no prédio.
+  const horizonte = H / 2 + (inclinacao / (campoV / 2)) * (H / 2);
 
   // Automático: longe só a faculdade, perto cada prédio. O botão pode forçar um dos dois.
   const dCampus = distanciaMetros(posicao.lat, posicao.lon, CAMPUS.lat, CAMPUS.lon);
@@ -238,7 +240,7 @@ function desenhar() {
     if (n === -1) { n = degraus.length; degraus.push(0); }
     degraus[n] = it.x + largura / 2;
     it.el.style.left = it.x + "px";
-    it.el.style.top = (H * 0.82 - n * (altura + 8)) + "px";
+    it.el.style.top = (horizonte - n * (altura + 8)) + "px";
     it.el.style.transform = `translate(-50%, -100%) scale(${escala})`;
     it.el.style.zIndex = String(50 - n);   // o de baixo fica por cima: nenhum nome some
   });
