@@ -176,7 +176,7 @@ AFRAME.registerComponent("gerenciador-pontos", {
 
     // Escala cresce com a distância (para ser visível de longe), mas menos que a
     // distância: assim o prédio mais longe aparece menor e os rótulos não se cobrem.
-    itens.forEach((p) => p.el.object3D.scale.setScalar(Math.max(5, 2.2 * Math.sqrt(p.d))));
+    itens.forEach((p) => p.el.object3D.scale.setScalar(Math.max(4, 1.2 * Math.sqrt(p.d))));
 
     const modo = MODO_TESTE ? " — MODO TESTE" : SIMULAR ? " — SIMULADO NO CAMPUS" : "";
     if (!itens.length) {
