@@ -93,7 +93,6 @@ A Biblioteca não tem nome no OpenStreetMap; foi identificada pelo mapa do enunc
 movimento (<code>DeviceOrientationEvent.requestPermission</code>, exigido no iPhone), câmera
 (<code>getUserMedia</code> com <code>facingMode: "environment"</code>) e localização
 (<code>getCurrentPosition</code>). Se algo for negado, a própria tela explica como liberar.</p>
-<p><img src="print_inicio.png" style="max-width:45%"><br><small>Tela inicial: escolha de onde você está e botão INICIAR.</small></p>
 <h3>GPS — <code>ligarGPS()</code></h3>
 <p>Lê a posição com <code>getCurrentPosition</code> a cada 3 segundos (alta precisão). Com GPS bom, cada leitura nova é misturada com a anterior (suavização), para os pinos não tremerem. Em alguns celulares
 o <code>watchPosition</code> não respondia, por isso foi usada a leitura periódica.</p>
@@ -152,10 +151,7 @@ direção da câmera definidas por teste):</p>
 perto de metal ou ímãs — por isso os pontos foram escolhidos a pelo menos ~50 m entre si.</li>
 <li>O campo de visão da câmera é aproximado (55° em pé, 75° deitado); varia um pouco entre celulares.</li>
 <li>O app não "enxerga" os prédios; a posição na tela vem só de GPS + bússola.</li>
-<li>Dentro de prédios o GPS do celular pode errar centenas de metros (nos testes, ±2000 m dentro do
-laboratório). Por isso a tela inicial tem a lista <b>"Onde você está?"</b>: o padrão é o GPS do celular,
-mas a pessoa pode escolher o lugar (pátio, entrada ou ao lado de um prédio), e essa posição é usada no
-lugar do GPS. A direção continua vindo da bússola e do giroscópio.</li>
+<li>Dentro de prédios o GPS do celular pode errar centenas de metros; o app funciona melhor ao ar livre.</li>
 </ul>
 
 <h2>10. Créditos</h2>
